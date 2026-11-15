@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>回声 · 摸鱼大师</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #05070c; overflow: hidden; touch-action: none;
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #fffaf0; user-select: none; -webkit-user-select: none; }
+  #stage { position: relative; height: 100%; margin: 0 auto; overflow: hidden; background: #cfd8e6; cursor: pointer; }
+  canvas { display: block; }
+  #hud, #screen, #hurt, #foam { position: absolute; inset: 0; pointer-events: none; }
+  #hud { display: none; text-shadow: 0 2px 4px rgba(0, 40, 50, .7); }
+  #top { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; gap: 8px; }
+  #top span { flex: 1; padding: 6px 4px; text-align: center; border-radius: 12px; background: rgba(10, 60, 72, .78); border: 2px solid rgba(200, 245, 255, .35); }
+  #top small { display: block; font-size: 11px; color: rgba(225, 248, 255, .75); }
+  #top b { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  #money { color: #ffe27a; } #bad { color: #ff9a8f; letter-spacing: 2px; } #custN { color: #b8f0ff; }
+  .bar { position: absolute; left: 10px; right: 10px; height: 14px; border-radius: 7px; background: rgba(10, 60, 72, .78); border: 1px solid rgba(200, 245, 255, .35); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; } .bar em { position: absolute; inset: 0; text-align: center; font-size: 10px; line-height: 14px; font-style: normal; text-shadow: 0 1px 2px #000; }
+  #tbar { top: 72px; } #tbar i { background: #ffd66e; } #tbar.max i { background: #ff8fe0; }
+  #cbar { top: 92px; } #cbar i { background: #ffd66e; } #cbar u { position: absolute; top: 0; bottom: 0; left: 93%; width: 2px; background: #fff; }
+  #name { position: absolute; top: 94px; left: 12px; font-size: 15px; font-weight: 800; }
+  #flow { position: absolute; top: 92px; right: 14px; text-align: right; font-size: 26px; font-weight: 900; font-style: italic; color: #ffe27a; }
+  #flow small { display: block; font-size: 12px; font-weight: 400; font-style: normal; color: rgba(255, 250, 240, .85); }
+  #bubble { position: absolute; top: 150px; left: 50%; transform: translateX(-50%); padding: 8px 16px; border-radius: 16px; background: #fff; color: #23323a; font-size: 17px; font-weight: 800; text-shadow: none; opacity: 0; white-space: nowrap; box-shadow: 0 4px 10px rgba(0, 40, 50, .35); }
+  #bubble.go { animation: pop 1.5s ease-out; }
+  @keyframes pop { 0% { opacity: 0; transform: translateX(-50%) scale(.4); } 12% { opacity: 1; transform: translateX(-50%) scale(1.15); } 22% { transform: translateX(-50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+  #banner { position: absolute; top: 40%; left: 0; right: 0; text-align: center; font-size: 34px; font-weight: 900; letter-spacing: 4px; color: #fff3b0;
+    text-shadow: 0 0 18px rgba(0, 150, 190, .9), 0 3px 0 #0b5566, 0 5px 8px rgba(0, 0, 0, .5); }
+  #tip { position: absolute; left: 10px; right: 10px; bottom: 14px; text-align: center; font-size: 15px; font-weight: 700; }
+  #hurt { background: radial-gradient(ellipse at center, transparent 45%, rgba(255, 40, 30, .6)); opacity: 0; }
+  #foam { opacity: 0; background: radial-gradient(ellipse at center, transparent 50%, rgba(255, 214, 110, .5)); }
+  #screen { pointer-events: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box;
+    background: radial-gradient(ellipse at center, rgba(8, 60, 74, .5), rgba(4, 30, 38, .92)); }
+  #screen h1 { font-weight: 900; font-size: 50px; letter-spacing: 6px; margin: 0 0 6px; color: #9fefff; text-shadow: 0 4px 0 #0b5566, 0 8px 14px rgba(0, 0, 0, .5); }
+  #screen h1.red { color: #ffb0a0; }
+  #screen .sub { font-size: 15px; color: rgba(225, 248, 255, .95); margin-bottom: 16px; line-height: 1.8; }
+  #screen .help { font-size: 13px; line-height: 2.1; color: rgba(225, 248, 255, .92); } #screen .help b { color: #ffe27a; }
+  #screen .go { margin-top: 24px; padding: 13px 48px; font-size: 20px; font-weight: 800; letter-spacing: 8px; cursor: pointer; border-radius: 14px; color: #06303a;
+    background: #7fe3ff; border: 0; box-shadow: 0 5px 0 #1b8aa3, 0 10px 18px rgba(0, 0, 0, .4); font-family: inherit; }
+  #home { position: absolute; left: 12px; top: 12px; z-index: 30; display: flex; align-items: center; height: 44px; padding: 0 16px; border-radius: 12px; background: rgba(10, 60, 72, .85); border: 1px solid rgba(200, 245, 255, .45); color: #fffaf0; font-size: 14px; text-decoration: none; pointer-events: auto; }
+  #screen[style*="display: none"] ~ #home { display: none; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "../node_modules/three/build/three.module.js",
+  "three/addons/": "../node_modules/three/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="stage">
+  <div id="hud">
+    <div id="top">
+      <span><small>摸鱼收入</small><b id="money">0</b></span>
+      <span><small id="dayL">第 1 天</small><b id="clock">9:00</b></span>
+      <span><small>警告</small><b id="bad"></b></span>
+    </div>
+    <div class="bar" id="tbar"><i></i><em id="ttxt"></em></div>
+    <div id="name"></div>
+    <div id="flow"></div>
+    <div id="bubble"></div>
+    <div id="banner"></div>
+    <div id="tip"></div>
+  </div>
+  <div id="foam"></div>
+  <div id="hurt"></div>
+  <div id="screen"></div>
+  <a id="home" href="../">‹ 游戏厅</a>
+</div>
+<script type="module">import("./game.js?t=" + Date.now());</script>
+</body>
+</html>

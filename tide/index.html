@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>回声 · 清潮</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #05070c; overflow: hidden; touch-action: none;
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #e8f4fa; user-select: none; -webkit-user-select: none; }
+  #stage { position: relative; height: 100%; margin: 0 auto; overflow: hidden; background: #0a0e18; }
+  canvas { display: block; }
+  #hud, #screen, #hurt { position: absolute; inset: 0; pointer-events: none; }
+  #hud { display: none; text-shadow: 0 1px 4px rgba(0, 0, 0, .9); }
+  #top { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; gap: 8px; }
+  #top span { flex: 1; padding: 6px 4px; text-align: center; border-radius: 10px; background: rgba(6, 12, 20, .72); border: 1px solid rgba(160, 220, 240, .2); }
+  #top small { display: block; font-size: 11px; color: rgba(232, 244, 250, .55); }
+  #top b { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  #kills { color: #ffd66e; } #life { color: #ff8f84; } #stageN { color: #8be9ff; }
+  #banner { position: absolute; top: 20%; left: 0; right: 0; text-align: center; font-size: 30px; font-weight: 700; letter-spacing: 6px; color: #ffe9a8;
+    text-shadow: 0 0 24px rgba(255, 190, 70, .9), 0 2px 6px #000; }
+  #combo { position: absolute; top: 84px; right: 14px; text-align: right; font-size: 28px; font-weight: 800; font-style: italic; color: #ffd66e;
+    text-shadow: 0 0 14px rgba(255, 180, 60, .9), 0 2px 4px #000; }
+  #combo small { display: block; font-size: 12px; font-weight: 400; font-style: normal; color: rgba(232, 244, 250, .7); }
+  #bot { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; justify-content: space-between; font-size: 13px; color: rgba(232, 244, 250, .85); }
+  #bot b { color: #ffd66e; font-weight: 600; }
+  #fbar { position: absolute; top: 66px; left: 10px; right: 10px; height: 6px; border-radius: 3px; background: rgba(6, 12, 20, .72); border: 1px solid rgba(255, 214, 110, .3); overflow: hidden; }
+  #ffill { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ff9a3c, #ffe27a); }
+  #fbar.on { box-shadow: 0 0 12px rgba(255, 200, 80, .9); }
+  #fever { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, transparent 55%, rgba(255, 180, 50, .5)); }
+  #hurt { background: radial-gradient(ellipse at center, transparent 45%, rgba(255, 40, 30, .65)); opacity: 0; }
+  #screen { pointer-events: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, .35), rgba(0, 0, 0, .86)); }
+  #screen h1 { font-weight: 200; font-size: 56px; letter-spacing: 16px; margin: 0 0 6px 16px; text-shadow: 0 0 34px rgba(130, 235, 255, .7); }
+  #screen h1.red { color: #ff8a7d; text-shadow: 0 0 34px rgba(255, 70, 60, .7); }
+  #screen .sub { font-size: 15px; color: rgba(190, 230, 240, .9); margin-bottom: 18px; line-height: 1.8; }
+  #screen .help { font-size: 13px; line-height: 2.1; color: rgba(170, 220, 235, .82); } #screen .help b { color: #ffe6a8; font-weight: 500; }
+  #screen .go { margin-top: 28px; padding: 13px 48px; font-size: 20px; letter-spacing: 8px; cursor: pointer; border-radius: 12px; color: #fff;
+    border: 1px solid #8be9ff; background: linear-gradient(180deg, rgba(40, 110, 140, .9), rgba(12, 44, 60, .95)); box-shadow: 0 0 26px rgba(130, 235, 255, .35); }
+  #home { position: absolute; left: 12px; top: 12px; z-index: 30; display: flex; align-items: center; height: 44px; padding: 0 16px; border-radius: 12px; background: rgba(6, 12, 20, .78); border: 1px solid rgba(160, 220, 240, .35); color: #e8f4fa; font-size: 14px; text-decoration: none; pointer-events: auto; }
+  #screen[style*="display: none"] ~ #home { display: none; }   /* 只在标题、暂停、结算界面出现，打的时候不挡画面 */
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "../node_modules/three/build/three.module.js",
+  "three/addons/": "../node_modules/three/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="stage">
+  <div id="hud">
+    <div id="top">
+      <span><small>击杀</small><b id="kills">0</b></span>
+      <span><small>阶段</small><b id="stageN">1</b></span>
+      <span><small>防线</small><b id="life">20</b></span>
+    </div>
+    <div id="fbar"><i id="ffill"></i></div>
+    <div id="banner"></div>
+    <div id="combo"></div>
+    <div id="bot"><span id="weapon"></span><span id="squadN"></span></div>
+  </div>
+  <div id="fever"></div>
+  <div id="hurt"></div>
+  <div id="screen"></div>
+  <a id="home" href="../">‹ 游戏厅</a>
+</div>
+<script type="module">import("./game.js?t=" + Date.now());   // 开发期间每次都取最新的脚本，避免浏览器缓存旧版本</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+node_modules/
+.DS_Store
+# 录屏视频体积大，不属于游戏本体
+video/
+# 语音合成的中间文件和缓存
+**/voice/.work/

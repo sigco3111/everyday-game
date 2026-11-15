@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>回声 · 晶塔守卫</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden;
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #e4f4fa; user-select: none; }
+  canvas { display: block; cursor: crosshair; }
+  #hud, #screen, #paused { position: fixed; inset: 0; }
+  #hud { pointer-events: none; display: none; }
+  #hud > div { position: absolute; text-shadow: 0 1px 4px rgba(0, 0, 0, .9); }
+  .box { background: rgba(6, 14, 20, .78); border: 1px solid rgba(160, 220, 240, .2); border-radius: 10px; }
+  #top { top: 10px; left: 12px; display: flex; gap: 22px; padding: 7px 18px; }
+  #top small { display: block; font-size: 11px; color: rgba(228, 244, 250, .55); }
+  #top b { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  #lives { color: #ff8f84; } #gold { color: #ffd66e; display: inline-block; transform-origin: left center; } #wave { color: #8be9ff; }
+  #next { top: 12px; left: 50%; transform: translateX(-50%); padding: 7px 18px; font-size: 14px; pointer-events: auto; cursor: pointer; white-space: nowrap; }
+  #next b { color: #ffd66e; font-weight: 500; } #next.go { border-color: #ffd66e; }
+  #speed { top: 12px; right: 12px; padding: 7px 14px; font-size: 13px; pointer-events: auto; cursor: pointer; }
+  #speed.on { border-color: #ffd66e; color: #ffd66e; }
+  #pause { top: 12px; right: 124px; padding: 7px 14px; font-size: 13px; pointer-events: auto; cursor: pointer; }
+  #center { top: 22%; left: 0; right: 0; text-align: center; font-size: 30px; font-weight: 300; letter-spacing: 6px; pointer-events: none; }
+  #center.big { font-size: 44px; font-weight: 600; letter-spacing: 12px; color: #ffe9a8; text-shadow: 0 0 30px rgba(255, 190, 70, .9), 0 2px 6px #000; }
+  #combo { top: 78px; right: 18px; text-align: right; font-size: 26px; font-weight: 800; font-style: italic; color: #ffd66e; text-shadow: 0 0 14px rgba(255, 180, 60, .9), 0 2px 4px #000; }
+  #combo small { display: block; font-size: 12px; font-weight: 400; font-style: normal; color: rgba(228, 244, 250, .7); }
+  #cut { top: 27%; left: -5%; right: -5%; height: 120px; pointer-events: none; opacity: 0; overflow: hidden; transform: skewY(-4deg);
+    background: linear-gradient(90deg, transparent, var(--c) 18%, rgba(255, 255, 255, .92) 50%, var(--c) 82%, transparent); box-shadow: 0 0 60px var(--c); }
+  #cut span { display: block; text-align: center; line-height: 120px; font-size: 80px; font-weight: 900; font-style: italic; letter-spacing: 34px; color: #10141a;
+    text-shadow: 0 0 2px #fff, 0 0 26px #fff; }
+  #cut.go { animation: cut .95s cubic-bezier(.2, .8, .2, 1) forwards; } #cut.go span { animation: cutT .95s cubic-bezier(.1, .9, .2, 1) forwards; }
+  @keyframes cut { 0% { opacity: 0; clip-path: inset(0 100% 0 0); } 14% { opacity: .95; clip-path: inset(0 0 0 0); } 70% { opacity: .95; clip-path: inset(0 0 0 0); } 100% { opacity: 0; clip-path: inset(0 0 0 100%); } }
+  @keyframes cutT { 0% { transform: translateX(-50%); } 16% { transform: translateX(-2%); } 70% { transform: translateX(2%); } 100% { transform: translateX(50%); } }
+  #info { left: 12px; bottom: 104px; padding: 10px 14px; font-size: 13px; line-height: 1.7; pointer-events: auto; display: none; min-width: 170px; }
+  #info h4 { margin: 0 0 2px; font-size: 16px; font-weight: 500; } #info .st { color: rgba(228, 244, 250, .7); }
+  #info .btn { display: inline-block; margin: 6px 6px 0 0; padding: 3px 10px; border-radius: 6px; cursor: pointer; border: 1px solid rgba(255, 214, 110, .6); color: #ffe6a8; }
+  #info .btn.sell { border-color: rgba(255, 140, 130, .6); color: #ffb6ae; } #info .btn.off { opacity: .4; }
+  #bar { bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; align-items: flex-end; justify-content: center; flex-wrap: wrap-reverse; width: max-content; max-width: 99vw; pointer-events: auto; }
+  #towers, #ults { display: flex; gap: 5px; padding: 7px; }
+  .tw { position: relative; width: 68px; height: 62px; border-radius: 8px; cursor: pointer; text-align: center; border: 1px solid rgba(160, 220, 240, .25);
+    background: linear-gradient(180deg, rgba(34, 52, 62, .95), rgba(10, 22, 30, .95)); border-top: 3px solid var(--c); }
+  .tw i { position: absolute; top: 2px; left: 5px; font-style: normal; font-size: 11px; color: rgba(228, 244, 250, .5); }
+  .tw b { display: block; margin-top: 9px; font-size: 14px; font-weight: 500; white-space: nowrap; } .tw span { font-size: 13px; color: #ffd66e; }
+  .tw small { display: none; }
+  .tw:hover small { display: block; position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); white-space: nowrap; padding: 4px 10px; border-radius: 6px; font-size: 12px; color: #e4f4fa; background: rgba(6, 14, 20, .92); border: 1px solid var(--c); }
+  .tw.sel { border-color: #fff; box-shadow: 0 0 14px var(--c); } .tw.off b, .tw.off span, .tw.off small { opacity: .35; }
+  .ult { position: relative; width: 86px; height: 70px; border-radius: 10px; cursor: pointer; text-align: center; overflow: hidden;
+    border: 1px solid var(--c); background: radial-gradient(ellipse at 50% 20%, var(--c), rgba(8, 14, 20, .95) 75%); box-shadow: 0 0 16px var(--c); }
+  .ult i { position: absolute; top: 3px; left: 7px; font-style: normal; font-size: 13px; font-weight: 600; }
+  .ult b { display: block; margin-top: 20px; font-size: 17px; font-weight: 600; letter-spacing: 2px; } .ult small { font-size: 10px; color: rgba(255, 255, 255, .8); }
+  .ult u { position: absolute; left: 0; right: 0; top: 0; background: rgba(0, 0, 0, .72); }
+  .ult em { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-style: normal; font-size: 24px; font-weight: 600; }
+  .ult.off { box-shadow: none; border-color: rgba(160, 220, 240, .2); } .ult.ready { animation: pulse 1.2s infinite; }
+  #paused { display: none; flex-direction: column; align-items: center; justify-content: center; font-size: 40px; font-weight: 200; letter-spacing: 12px; background: rgba(0, 0, 0, .5); }
+  #screen { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 16px; box-sizing: border-box;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, .35), rgba(0, 0, 0, .85)); }
+  #screen h1 { font-weight: 200; font-size: 68px; letter-spacing: 18px; margin: 0 0 4px 18px; text-shadow: 0 0 34px rgba(130, 235, 255, .7); }
+  #screen h1.red { color: #ff8a7d; text-shadow: 0 0 34px rgba(255, 70, 60, .7); } #screen h1.gold { color: #ffe18c; text-shadow: 0 0 34px rgba(255, 200, 80, .7); }
+  #screen .sub { font-size: 16px; color: rgba(190, 230, 240, .9); margin-bottom: 16px; }
+  #screen .help { font-size: 13px; line-height: 2.1; color: rgba(170, 220, 235, .8); } #screen .help b { color: #e4f4fa; font-weight: 500; }
+  #screen .go, #paused .go { margin-top: 26px; padding: 12px 46px; font-size: 20px; letter-spacing: 8px; cursor: pointer; border-radius: 10px; color: #fff;
+    border: 1px solid #8be9ff; background: linear-gradient(180deg, rgba(40, 110, 140, .9), rgba(12, 44, 60, .95)); box-shadow: 0 0 26px rgba(130, 235, 255, .35); }
+  #screen .go:hover, #paused .go:hover { transform: translateY(-2px); box-shadow: 0 0 34px rgba(130, 235, 255, .6); }
+  #screen .go.alt, #paused .go { font-size: 16px; letter-spacing: 4px; padding: 12px 28px; border-color: rgba(160, 220, 240, .4); background: rgba(12, 30, 40, .9); box-shadow: none; }
+  .row { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; justify-content: center; }
+  .maps { display: flex; gap: 14px; margin: 4px 0 20px; flex-wrap: wrap; justify-content: center; }
+  .map { position: relative; width: 196px; padding: 14px 12px 12px; border-radius: 12px; cursor: pointer; text-align: center; border: 1px solid rgba(160, 220, 240, .25); border-top: 4px solid var(--c);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--c) 30%, rgba(10, 22, 30, .95)), rgba(8, 16, 22, .95)); transition: transform .12s, box-shadow .12s; }
+  .map:hover { transform: translateY(-3px); box-shadow: 0 0 24px var(--c); }
+  .map em { font-style: normal; font-size: 11px; color: rgba(228, 244, 250, .6); letter-spacing: 2px; }
+  .map b { display: block; font-size: 23px; font-weight: 500; letter-spacing: 5px; margin: 5px 0 4px 5px; }
+  .map small { display: block; font-size: 12px; line-height: 1.5; color: rgba(210, 235, 245, .78); min-height: 36px; }
+  .stars { display: block; margin-top: 6px; font-size: 17px; color: #ffd66e; letter-spacing: 4px; } .stars i { font-style: normal; color: rgba(255, 255, 255, .18); }
+  .map.lock { cursor: default; filter: grayscale(.85) brightness(.6); } .map.lock:hover { transform: none; box-shadow: none; }
+  .map.lock .stars { font-size: 12px; color: rgba(228, 244, 250, .7); letter-spacing: 1px; }
+  @keyframes pulse { 50% { filter: brightness(1.35); } }
+  #home { position: fixed; left: 12px; top: 12px; z-index: 30; display: flex; align-items: center; height: 44px; padding: 0 16px; border-radius: 12px; background: rgba(6, 12, 20, .78); border: 1px solid rgba(160, 220, 240, .35); color: #e8f4fa; font-size: 14px; text-decoration: none; pointer-events: auto; }
+  #screen[style*="display: none"] ~ #home { display: none; }   /* 只在标题、暂停、结算界面出现，打的时候不挡画面 */
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "../node_modules/three/build/three.module.js",
+  "three/addons/": "../node_modules/three/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="hud">
+  <div id="top" class="box">
+    <span><small>关卡</small><b id="mapn"></b></span>
+    <span><small>波次</small><b id="wave"></b></span>
+    <span><small>晶塔生命</small><b id="lives"></b></span>
+    <span><small>金币</small><b id="gold"></b></span>
+    <span><small>击杀</small><b id="kills"></b></span>
+  </div>
+  <div id="next" class="box" data-act="next"></div>
+  <div id="speed" class="box" data-act="speed"></div>
+  <div id="pause" class="box" data-act="pause">P 暂停</div>
+  <div id="center"></div>
+  <div id="cut"><span></span></div>
+  <div id="combo"></div>
+  <div id="info" class="box"></div>
+  <div id="bar"><div id="towers" class="box"></div><div id="ults" class="box"></div></div>
+</div>
+<div id="paused"><div>暂 停</div><div class="row"><div class="go" data-act="pause">继续游戏</div><div class="go" data-act="menu">返回选关</div></div></div>
+<div id="screen"></div>
+<a id="home" href="../">‹ 游戏厅</a>
+<script type="module" src="game.js"></script>
+</body>
+</html>

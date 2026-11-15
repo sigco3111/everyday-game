@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>回声 · 相亲角速配</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #05070c; overflow: hidden; touch-action: none;
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #fffaf0; user-select: none; -webkit-user-select: none; }
+  #stage { position: relative; height: 100%; margin: 0 auto; overflow: hidden; background: #8fc9a0; }
+  canvas.bg { display: block; position: absolute; inset: 0; }
+  #hud, #screen, #hurt { position: absolute; inset: 0; }
+  #hud { display: none; } #hurt { pointer-events: none; background: radial-gradient(ellipse at center, transparent 45%, rgba(255, 40, 30, .6)); opacity: 0; }
+  #top { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; gap: 8px; }
+  #top span { flex: 1; padding: 6px 4px; text-align: center; border-radius: 12px; background: rgba(70, 24, 40, .82); border: 2px solid rgba(255, 210, 225, .4); }
+  #top small { display: block; font-size: 11px; color: rgba(255, 235, 240, .78); }
+  #top b { font-size: 21px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  #score { color: #ffe27a; } #lives { color: #ff9ab0; letter-spacing: 2px; } #auntN { color: #ffd0e0; }
+  #want { position: absolute; top: 76px; left: 10px; right: 10px; padding: 10px 12px 12px; border-radius: 14px; background: #fff7e0; color: #4a2a10; border: 3px solid #e0a03a; box-shadow: 0 4px 0 #b97a1c; }
+  #want h3 { margin: 0 0 6px; font-size: 14px; font-weight: 800; color: #b9541c; display: flex; justify-content: space-between; } #want h3 em { font-style: normal; font-weight: 400; color: #8a6a4a; }
+  #reqs { display: flex; flex-wrap: wrap; gap: 6px; }
+  #reqs span { padding: 5px 10px; border-radius: 999px; background: #ffe2a8; font-size: 15px; font-weight: 700; border: 1px solid #e0a03a; }
+  #reqs span.bad { background: #ff8f84; border-color: #c0392b; color: #fff; animation: shake .4s; }
+  @keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  #tbar { position: absolute; left: 10px; right: 10px; top: 0; height: 8px; border-radius: 4px; background: rgba(70, 24, 40, .5); overflow: hidden; } #tbar i { display: block; height: 100%; width: 100%; background: #7fe3a0; } #tbar.low i { background: #ff6a5a; }
+  #deck { position: absolute; left: 0; right: 0; top: 0; bottom: 96px; }
+  #card { position: absolute; left: 50%; top: 0; width: min(78%, 330px); margin-left: calc(min(78%, 330px) / -2); padding: 14px 16px 16px; box-sizing: border-box; border-radius: 18px; background: #fff; color: #2a2230;
+    box-shadow: 0 10px 0 rgba(0, 0, 0, .12), 0 16px 30px rgba(40, 20, 30, .35); touch-action: none; cursor: grab; will-change: transform; }
+  #card .head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  #card canvas { width: 76px; height: 76px; border-radius: 50%; background: #e8f0f6; flex-shrink: 0; }
+  #card h2 { margin: 0; font-size: 24px; font-weight: 900; } #card .job { font-size: 14px; color: #7a6a80; }
+  #card ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  #card li { padding: 7px 8px; border-radius: 10px; background: #f3eef6; font-size: 15px; font-weight: 700; text-align: center; } #card li small { display: block; font-size: 11px; font-weight: 400; color: #8a7a90; }
+  #card .stamp { position: absolute; top: 18px; padding: 4px 12px; border-radius: 10px; font-size: 26px; font-weight: 900; border: 4px solid; opacity: 0; transform: rotate(-14deg); }
+  #card .yes { right: 14px; color: #1fa35a; border-color: #1fa35a; transform: rotate(14deg); } #card .no { left: 14px; color: #d8362c; border-color: #d8362c; }
+  #btns { position: absolute; left: 0; right: 0; bottom: 14px; display: flex; justify-content: center; gap: 36px; }
+  #btns button { width: 74px; height: 74px; border-radius: 50%; border: 0; font: inherit; font-size: 15px; font-weight: 900; color: #fff; cursor: pointer; box-shadow: 0 5px 0 rgba(0, 0, 0, .25); }
+  #bNo { background: #e0483c; } #bYes { background: #26b566; } #btns button:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0, 0, 0, .25); }
+  #bubble { position: absolute; left: 50%; bottom: 104px; transform: translateX(-50%); padding: 8px 16px; border-radius: 16px; background: #fff; color: #4a2a10; font-size: 17px; font-weight: 800; opacity: 0; white-space: nowrap; box-shadow: 0 4px 10px rgba(40, 20, 30, .35); pointer-events: none; z-index: 5; }
+  #bubble.go { animation: pop 1.6s ease-out; }
+  @keyframes pop { 0% { opacity: 0; transform: translateX(-50%) scale(.4); } 12% { opacity: 1; transform: translateX(-50%) scale(1.15); } 22% { transform: translateX(-50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+  #banner { position: absolute; top: 46%; left: 0; right: 0; text-align: center; font-size: 32px; font-weight: 900; letter-spacing: 3px; color: #fff3b0; pointer-events: none; z-index: 6;
+    text-shadow: 0 0 18px rgba(200, 60, 100, .9), 0 3px 0 #7a1c3a, 0 5px 8px rgba(0, 0, 0, .5); }
+  #combo { position: absolute; right: 14px; bottom: 100px; text-align: right; font-size: 26px; font-weight: 900; font-style: italic; color: #ffe27a; text-shadow: 0 2px 4px rgba(60, 20, 30, .8); pointer-events: none; } #combo small { display: block; font-size: 12px; font-weight: 400; font-style: normal; color: #fff; }
+  #screen { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box; background: radial-gradient(ellipse at center, rgba(90, 30, 50, .55), rgba(40, 10, 22, .93)); }
+  #screen h1 { font-weight: 900; font-size: 44px; letter-spacing: 4px; margin: 0 0 6px; color: #ffb8cc; text-shadow: 0 4px 0 #7a1c3a, 0 8px 14px rgba(0, 0, 0, .5); }
+  #screen h1.red { color: #ffb0a0; }
+  #screen .sub { font-size: 15px; color: rgba(255, 235, 240, .95); margin-bottom: 16px; line-height: 1.8; }
+  #screen .help { font-size: 13px; line-height: 2.1; color: rgba(255, 235, 240, .92); } #screen .help b { color: #ffe27a; }
+  #screen .go { margin-top: 24px; padding: 13px 44px; font-size: 20px; font-weight: 800; letter-spacing: 6px; cursor: pointer; border-radius: 14px; color: #4a0f22; background: #ffb8cc; border: 0; box-shadow: 0 5px 0 #b9546e, 0 10px 18px rgba(0, 0, 0, .4); font-family: inherit; }
+  #home { position: absolute; left: 12px; top: 12px; z-index: 30; display: flex; align-items: center; height: 44px; padding: 0 16px; border-radius: 12px; background: rgba(70, 24, 40, .88); border: 1px solid rgba(255, 210, 225, .5); color: #fffaf0; font-size: 14px; text-decoration: none; }
+  #screen[style*="display: none"] ~ #home { display: none; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "../node_modules/three/build/three.module.js",
+  "three/addons/": "../node_modules/three/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="stage">
+  <div id="hud">
+    <div id="top">
+      <span><small>得分</small><b id="score">0</b></span>
+      <span><small>委托人</small><b id="auntN">第 1 位</b></span>
+      <span><small>大妈的耐心</small><b id="lives"></b></span>
+    </div>
+    <div id="want"><h3><span id="who"></span><em id="leftN"></em></h3><div id="reqs"></div></div>
+    <div id="deck">
+      <div id="tbar"><i></i></div>
+      <div id="card">
+        <span class="stamp no">不合适</span><span class="stamp yes">合适</span>
+        <div class="head"><canvas id="face" width="152" height="152"></canvas><div><h2 id="cname"></h2><div class="job" id="cjob"></div></div></div>
+        <ul id="attrs"></ul>
+      </div>
+    </div>
+    <div id="combo"></div>
+    <div id="btns"><button id="bNo">不合适</button><button id="bYes">合适</button></div>
+    <div id="bubble"></div>
+    <div id="banner"></div>
+  </div>
+  <div id="hurt"></div>
+  <div id="screen"></div>
+  <a id="home" href="../">‹ 游戏厅</a>
+</div>
+<script type="module">import("./game.js?t=" + Date.now());</script>
+</body>
+</html>

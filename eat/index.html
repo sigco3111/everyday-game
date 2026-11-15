@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>回声 · 吃啥拉啥</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #05070c; overflow: hidden; touch-action: none;
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #fff8e8; user-select: none; -webkit-user-select: none; }
+  #stage { position: relative; height: 100%; margin: 0 auto; overflow: hidden; background: #7ec8f0; }
+  canvas { display: block; }
+  #hud, #screen, #hurt, #rainbow { position: absolute; inset: 0; pointer-events: none; }
+  #hud { display: none; text-shadow: 0 2px 4px rgba(40, 20, 0, .8); }
+  #top { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; gap: 8px; }
+  #top span { flex: 1; padding: 6px 4px; text-align: center; border-radius: 12px; background: rgba(60, 34, 12, .72); border: 2px solid rgba(255, 230, 170, .35); }
+  #top small { display: block; font-size: 11px; color: rgba(255, 240, 210, .7); }
+  #top b { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  #score { color: #ffe27a; } #hearts { color: #ff8f84; letter-spacing: 1px; } #stageN { color: #b8f0a0; }
+  #belly { position: absolute; top: 74px; left: 10px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: rgba(255, 248, 232, .9); }
+  #belly i { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-style: normal; font-weight: 800; font-size: 16px;
+    background: rgba(60, 34, 12, .6); border: 2px dashed rgba(255, 230, 170, .4); color: #2a1606; text-shadow: none; }
+  #belly i.on { border-style: solid; border-color: #fff; }
+  #banner { position: absolute; top: 22%; left: 0; right: 0; text-align: center; font-size: 34px; font-weight: 900; letter-spacing: 4px; color: #fff3b0;
+    text-shadow: 0 0 18px rgba(255, 150, 40, .9), 0 3px 0 #7a3b00, 0 5px 8px rgba(0, 0, 0, .6); }
+  #fart { position: absolute; top: 33%; left: 0; right: 0; text-align: center; font-size: 24px; font-weight: 900; letter-spacing: 2px; opacity: 0; text-shadow: 0 2px 0 #3a1d02, 0 0 10px rgba(0, 0, 0, .6); }
+  #fart.go { animation: fartpop .9s ease-out; }
+  @keyframes fartpop { 0% { opacity: 0; transform: translateY(26px) scale(.5); } 18% { opacity: 1; transform: translateY(0) scale(1.25); } 35% { transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-22px); } }
+  #combo { position: absolute; top: 74px; right: 14px; text-align: right; font-size: 28px; font-weight: 900; font-style: italic; color: #ffe27a; }
+  #combo small { display: block; font-size: 12px; font-weight: 400; font-style: normal; color: rgba(255, 248, 232, .8); }
+  #tip { position: absolute; left: 10px; right: 10px; bottom: 10px; text-align: center; font-size: 13px; color: rgba(255, 248, 232, .9); }
+  #hurt { background: radial-gradient(ellipse at center, transparent 45%, rgba(255, 40, 30, .65)); opacity: 0; }
+  #rainbow { opacity: 0; background: radial-gradient(ellipse at center, transparent 55%, rgba(255, 120, 220, .45)); }
+  #screen { pointer-events: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box;
+    background: radial-gradient(ellipse at center, rgba(60, 30, 5, .45), rgba(30, 14, 2, .9)); }
+  #screen h1 { font-weight: 900; font-size: 52px; letter-spacing: 6px; margin: 0 0 6px; color: #ffe27a; text-shadow: 0 4px 0 #7a3b00, 0 8px 14px rgba(0, 0, 0, .5); }
+  #screen h1.red { color: #ffb0a0; }
+  #screen .sub { font-size: 15px; color: rgba(255, 240, 210, .95); margin-bottom: 16px; line-height: 1.8; }
+  #screen .help { font-size: 13px; line-height: 2; color: rgba(255, 240, 210, .9); } #screen .help b { color: #ffe27a; }
+  #screen .foods { display: grid; grid-template-columns: repeat(2, auto); gap: 4px 18px; margin: 12px 0 0; font-size: 13px; text-align: left; color: rgba(255, 240, 210, .92); }
+  #screen .foods i { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 6px; vertical-align: -2px; }
+  #screen .go { margin-top: 24px; padding: 13px 48px; font-size: 20px; font-weight: 800; letter-spacing: 8px; cursor: pointer; border-radius: 14px; color: #2a1606;
+    background: #ffd66e; border: 0; box-shadow: 0 5px 0 #a8701a, 0 10px 18px rgba(0, 0, 0, .4); }
+  #home { position: absolute; left: 12px; top: 12px; z-index: 30; display: flex; align-items: center; height: 44px; padding: 0 16px; border-radius: 12px; background: rgba(60, 34, 12, .8); border: 1px solid rgba(255, 230, 170, .45); color: #fff8e8; font-size: 14px; text-decoration: none; pointer-events: auto; }
+  #screen[style*="display: none"] ~ #home { display: none; }   /* 只在标题和结算界面出现 */
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "../node_modules/three/build/three.module.js",
+  "three/addons/": "../node_modules/three/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="stage">
+  <div id="hud">
+    <div id="top">
+      <span><small>得分</small><b id="score">0</b></span>
+      <span><small>关卡</small><b id="stageN">1</b></span>
+      <span><small>体力</small><b id="hearts"></b></span>
+    </div>
+    <div id="belly"><span>肚子里</span><i id="b0"></i><i id="b1"></i><i id="b2"></i></div>
+    <div id="combo"></div>
+    <div id="banner"></div>
+    <div id="fart"></div>
+    <div id="tip"></div>
+  </div>
+  <div id="rainbow"></div>
+  <div id="hurt"></div>
+  <div id="screen"></div>
+  <a id="home" href="../">‹ 游戏厅</a>
+</div>
+<script type="module">import("./game.js?t=" + Date.now());</script>
+</body>
+</html>
