@@ -150,16 +150,33 @@ scene.add(sun);
   m.position.y = 0.03; m.receiveShadow = true; scene.add(m);
 }
 const composer = new EffectComposer(renderer);
+for (const rt of [composer.renderTarget1, composer.renderTarget2]) { rt.depthTexture = new THREE.DepthTexture(1, 1); rt.depthTexture.type = THREE.UnsignedIntType; }   // 留下场景的深度，后面算环境光遮蔽要用
 composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.7, 0.5, 0.8);
 composer.addPass(bloom);
 const lens = new ShaderPass({
   uniforms: { tDiffuse: { value: null }, uHurt: { value: 0 }, uFlash: { value: 0 }, uFlashC: { value: new THREE.Vector3(1, 1, 1) },
     uTint: { value: new THREE.Vector3(1, 1, 1) }, uTintK: { value: 0 }, uAb: { value: 0 }, uDark: { value: 0 },
-    uShock: { value: new THREE.Vector4(0.5, 0.5, 0, 0) }, uAspect: { value: 1 }, uInv: { value: 0 } },
+    uShock: { value: new THREE.Vector4(0.5, 0.5, 0, 0) }, uAspect: { value: 1 }, uInv: { value: 0 }, uPx: { value: new THREE.Vector2(1 / 1280, 1 / 720) }, uTime: { value: 0 }, tDepth: { value: null }, uPI: { value: new THREE.Matrix4() }, uProjY: { value: 1 }, uAoK: { value: 4.5 }, uDbg: { value: 0 } },
   vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: `
-    uniform sampler2D tDiffuse; uniform float uHurt, uFlash, uTintK, uAb, uDark, uAspect, uInv; uniform vec3 uFlashC, uTint; uniform vec4 uShock; varying vec2 vUv;
+    uniform sampler2D tDiffuse; uniform float uHurt, uFlash, uTintK, uAb, uDark, uAspect, uInv, uTime; uniform vec3 uFlashC, uTint; uniform vec4 uShock; uniform vec2 uPx; varying vec2 vUv;
+    float gHash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+    vec3 tap(vec2 uv) { return texture2D(tDiffuse, uv).rgb; }
+    uniform sampler2D tDepth; uniform mat4 uPI; uniform float uProjY, uAoK, uDbg;
+    vec3 vpos(vec2 uv) { vec4 c = uPI * vec4(uv * 2.0 - 1.0, texture2D(tDepth, uv).x * 2.0 - 1.0, 1.0); return c.xyz / c.w; }   // 从深度还原出这个像素在镜头前的位置
+    // 环境光遮蔽：看周围一小圈的像素有多少比这个面更靠前，挡住的越多这里越暗。塔脚、石缝、树根这些交界处会自然压暗
+    float aoAt(vec2 uv) {
+      vec3 P = vpos(uv); if (fwidth(P.z) > 0.22) return 1.0;                     // 轮廓边缘和草叶这种细碎东西算不准朝向，跳过，免得出黑点
+      vec3 N = normalize(cross(dFdx(P), dFdy(P)));
+      float rad = 1.5 * uProjY / max(1.0, -P.z) * 0.5, a0 = gHash(vUv * vec2(913.0, 517.0)) * 6.2832, occ = 0.0;
+      for (int i = 0; i < 10; i++) {
+        float fi = float(i), an = a0 + fi * 2.39996, rr = sqrt((fi + 0.5) / 10.0);
+        vec2 o = vec2(cos(an), sin(an)) * rr * rad; o.x /= uAspect;
+        vec3 v = vpos(uv + o) - P; occ += max(0.0, dot(v, N) - 0.05) / (dot(v, v) + 0.4);
+      }
+      return clamp(1.0 - occ * uAoK / 10.0, 0.0, 1.0);
+    }
     void main() {
       vec2 uv = vUv;
       vec2 sd = uv - uShock.xy; sd.x *= uAspect; float sl = length(sd) + 0.0001;      // 冲击波：一圈向外扩散的折射
@@ -168,14 +185,35 @@ const lens = new ShaderPass({
       vec2 c = uv - 0.5; float r = length(c);
       vec2 off = c * r * uAb;
       vec3 col = vec3(texture2D(tDiffuse, uv + off).r, texture2D(tDiffuse, uv).g, texture2D(tDiffuse, uv - off).b);
+      float lum0 = dot(col, vec3(0.3, 0.6, 0.1));
+      float ao = mix(aoAt(uv), 1.0, smoothstep(0.5, 1.0, lum0));                // 遮蔽只压环境光：本身很亮的地方（光效、高光）不压
+      col *= mix(vec3(0.2, 0.23, 0.32), vec3(1.0), ao);                         // 压暗的同时带一点冷色
+      // 移轴：画面上下两条带子轻微虚化，像在看一个微缩沙盘；中间清晰的部分做一点锐化
+      float band = smoothstep(0.3, 0.52, abs(vUv.y - 0.52));
+      if (band > 0.02) {
+        vec2 br = uPx * band * 3.4;
+        vec3 acc = col + tap(uv + br * vec2(1.0, 0.0)) + tap(uv + br * vec2(-1.0, 0.0)) + tap(uv + br * vec2(0.0, 1.0)) + tap(uv + br * vec2(0.0, -1.0))
+          + tap(uv + br * vec2(0.7, 0.7)) + tap(uv + br * vec2(-0.7, 0.7)) + tap(uv + br * vec2(0.7, -0.7)) + tap(uv + br * vec2(-0.7, -0.7));
+        col = mix(col, acc / 9.0, band);
+      } else {
+        vec3 nb = (tap(uv + vec2(uPx.x, 0.0)) + tap(uv - vec2(uPx.x, 0.0)) + tap(uv + vec2(0.0, uPx.y)) + tap(uv - vec2(0.0, uPx.y))) * 0.25;
+        col = max(col + (col - nb) * 0.3, 0.0);
+      }
       col *= 1.0 - smoothstep(0.5, 1.05, r) * 0.5;
       float lum = dot(col, vec3(0.3, 0.6, 0.1));                    // 调色：提一点饱和和对比，整体偏暖
       col = max(mix(vec3(lum), col, 1.2), 0.0); col = max((col - 0.5) * 1.08 + 0.5, 0.0) * vec3(1.04, 1.0, 0.95);
+      // 电影色调曲线：高光往回压而不是直接顶白，大招叠在一起也不会糊成一片
+      vec3 fx = col * 1.16; vec3 film = clamp((fx * (2.51 * fx + 0.03)) / (fx * (2.43 * fx + 0.59) + 0.14), 0.0, 1.0);
+      col = mix(col, film, 0.62);
+      float l2 = dot(col, vec3(0.3, 0.6, 0.1));
+      col *= mix(vec3(0.94, 1.0, 1.07), vec3(1.05, 1.0, 0.95), smoothstep(0.08, 0.75, l2));   // 分离色调：暗部偏青，亮部偏暖
+      col += (gHash(vUv * vec2(1733.0, 977.0) + fract(uTime) * 61.0) - 0.5) * 0.034 * (1.0 - l2 * 0.6);   // 胶片颗粒，顺带消掉渐变的色带
       col = mix(col, col * uTint * 1.25 + uTint * 0.05, uTintK);
       col *= 1.0 - uDark * (0.45 + 0.4 * smoothstep(0.1, 0.8, r));
       col = mix(col, vec3(1.0) - min(col, vec3(1.0)), uInv);                             // 命中瞬间的反色定格帧
       col += uFlashC * uFlash;
       col += vec3(0.4, 0.0, 0.0) * uHurt * smoothstep(0.3, 0.9, r);
+      if (uDbg > 0.5) col = vec3(aoAt(vUv));                                       // 调试：只看遮蔽
       gl_FragColor = vec4(col, 1.0);
     }
   `,
@@ -240,6 +278,7 @@ scene.add(new THREE.Mesh(new THREE.PlaneGeometry(500, 400).rotateX(-Math.PI / 2)
       float rip = noise(wp) * 0.6 + noise(wp * 2.7 + 3.0) * 0.4;
       vec3 wcol = mix(uW1, uW2, rip) + uFoam * smoothstep(0.7, 0.8, rip) * 0.5;
       wcol += uFoam * 1.1 * smoothstep(0.95, 1.35, rd) * 0.3 * (0.6 + 0.4 * sin(p.y * 3.0 + uTime * 2.0));
+      wcol += uFoam * pow(noise(wp * 5.0 + vec2(0.0, uTime * 2.0)), 9.0) * 2.4;                    // 水面上一闪一闪的碎光
       col = mix(col, wcol, water);
       float line = 1.0 - smoothstep(0.008, 0.03, min(gq.x, gq.y));
       col += vec3(0.5, 0.9, 1.0) * line * (1.0 - road) * (1.0 - water) * (0.02 + 0.1 * uShow);
@@ -295,10 +334,35 @@ const G = {
   torus: (r, t, n = 16) => new THREE.TorusGeometry(r, t, 5, n),
 };
 // 给材质加一圈轮廓光，模型边缘会亮起来，立体感强很多
+// 另外在着色器里现算三样细节，不用任何贴图：表面深浅不匀的磨损、越靠近地面越暗（东西像是真的落在地上）、朝着太阳的一点高光
+const litU = { uSunV: { value: new THREE.Vector3(0, 1, 0) }, uSunC: { value: new THREE.Color(1, 1, 1) }, uT: { value: 0 } };
+// 随风摆：越靠草尖摆得越多，每丛按自己的位置错开节奏，一阵阵的风从场地上扫过去
+function sway(m) {
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uT = litU.uT;
+    sh.vertexShader = 'uniform float uT;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+      '#include <begin_vertex>\n#ifdef USE_INSTANCING\n  float swx = instanceMatrix[3].x, swz = instanceMatrix[3].z;\n  float gust = 0.6 + 0.4 * sin(uT * 0.7 + swx * 0.11 + swz * 0.07);\n  transformed.x += sin(uT * 2.3 + swx * 0.7 + swz * 0.5) * 0.3 * gust * position.y;\n  transformed.z += cos(uT * 1.7 + swx * 0.4) * 0.16 * gust * position.y;\n#endif');
+  };
+  return m;
+}
 function rim(m, k = 0.9) {
   m.onBeforeCompile = (sh) => {
-    sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>',
-      'outgoingLight += pow(1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0), 2.6) * (diffuseColor.rgb * ' + k.toFixed(2) + ' + 0.06);\n#include <opaque_fragment>');
+    sh.uniforms.uSunV = litU.uSunV; sh.uniforms.uSunC = litU.uSunC; sh.uniforms.uRimK = { value: k };
+    sh.vertexShader = 'varying vec3 vWp;\n' + sh.vertexShader.replace('#include <project_vertex>',
+      '#include <project_vertex>\n  vec4 wp4 = vec4(transformed, 1.0);\n#ifdef USE_INSTANCING\n  wp4 = instanceMatrix * wp4;\n#endif\n  vWp = (modelMatrix * wp4).xyz;');
+    sh.fragmentShader = `varying vec3 vWp; uniform vec3 uSunV, uSunC; uniform float uRimK;
+      float dHash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+      float dNoise(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(mix(dHash(i), dHash(i + vec3(1, 0, 0)), f.x), mix(dHash(i + vec3(0, 1, 0)), dHash(i + vec3(1, 1, 0)), f.x), f.y),
+                   mix(mix(dHash(i + vec3(0, 0, 1)), dHash(i + vec3(1, 0, 1)), f.x), mix(dHash(i + vec3(0, 1, 1)), dHash(i + vec3(1, 1, 1)), f.x), f.y), f.z); }
+      ` + sh.fragmentShader.replace('#include <opaque_fragment>', `
+      vec3 dN = normalize(normal), dV = normalize(vViewPosition);
+      float dn = dNoise(vWp * 2.3) * 0.6 + dNoise(vWp * 9.0) * 0.4;
+      outgoingLight *= 0.84 + 0.3 * dn;
+      outgoingLight *= 0.62 + 0.38 * smoothstep(-0.1, 1.4, vWp.y);
+      outgoingLight += pow(max(dot(dN, normalize(dV + uSunV)), 0.0), 36.0) * uSunC * 0.26 * (0.35 + 0.65 * dn);
+      outgoingLight += pow(1.0 - clamp(dot(dN, dV), 0.0, 1.0), 2.6) * (diffuseColor.rgb * uRimK + 0.06);
+      #include <opaque_fragment>`);
   };
   return m;
 }
@@ -587,7 +651,7 @@ const SG = {
 const SG_SET = new Set(Object.values(SG));
 const SM = {
   vc: vcMat(), shard: new THREE.MeshBasicMaterial({ toneMapped: false, vertexColors: true }), lamp: new THREE.MeshLambertMaterial({ color: 0x8a949a, flatShading: true, vertexColors: true }),
-  flame: glowMat({ color: new THREE.Color(2.6, 1.5, 0.45) }), tuft: new THREE.MeshLambertMaterial({ flatShading: true, vertexColors: true }),
+  flame: glowMat({ color: new THREE.Color(2.6, 1.5, 0.45) }), tuft: sway(new THREE.MeshLambertMaterial({ flatShading: true, vertexColors: true })),
   wood: rim(new THREE.MeshLambertMaterial({ color: 0x8a6238, flatShading: true })), woodD: rim(new THREE.MeshLambertMaterial({ color: 0x5c4026, flatShading: true })),
   stone: new THREE.MeshLambertMaterial({ color: 0x7a858c, flatShading: true }), stoneD: new THREE.MeshLambertMaterial({ color: 0x4d565c, flatShading: true }),
   red: glowMat({ color: new THREE.Color(2.4, 0.4, 0.25) }), swirl: addMat({ map: runeTex, color: new THREE.Color(2.6, 0.45, 0.3), side: THREE.DoubleSide }),
@@ -667,10 +731,10 @@ function buildScenery() {
   }
   // 草丛：只长在可建的地面上
   const tufts = [];
-  for (let n = 0; tufts.length < t.tufts && n < 5000; n++) {
+  for (let n = 0; tufts.length < t.tufts * (t.flower ? 5 : 2) && n < 30000; n++) {                  // 草比原来密五倍，颜色提亮一点，不然远看像一地黑点
     const x = rand(-HX + 0.5, HX - 0.5), z = rand(-HZ + 0.5, HZ - 0.5), b = blocked[Math.floor((z + HZ) / CS) * COLS + Math.floor((x + HX) / CS)];
     if (b === 1 || b === 2) continue;
-    tufts.push({ x, z, ry: rand(6.3), sx: rand(0.7, 1.4), h: rand(t.tuft[0], t.tuft[1]), s: t.tuft[2] * rand(0.8, 1.2), l: rand(t.tuft[3], t.tuft[4]) });
+    tufts.push({ x, z, ry: rand(6.3), sx: rand(0.7, 1.5), h: rand(t.tuft[0], t.tuft[1]), s: t.tuft[2] * rand(0.8, 1.2), l: rand(t.tuft[3], t.tuft[4]) * 1.3 + 0.03 });
   }
   inst(SG.tuft, SM.tuft, tufts, false);
 }
@@ -821,6 +885,9 @@ function audio() {
       meter = ac.createAnalyser(); meter.fftSize = 2048; meterBuf = new Float32Array(2048);
       const out = ac.createGain(); out.gain.value = 0.62;         // 压限后留余量，峰值不削波
       master.connect(comp); comp.connect(out); out.connect(meter); meter.connect(ac.destination);
+      const rv = ac.createConvolver(), rl = Math.floor(ac.sampleRate * 1.7), ib = ac.createBuffer(2, rl, ac.sampleRate);   // 混响：一段衰减的噪声当作空间的回声
+      for (let ch = 0; ch < 2; ch++) { const dd = ib.getChannelData(ch); for (let i = 0; i < rl; i++) dd[i] = (Math.random() * 2 - 1) * (1 - i / rl) ** 2.6; }
+      rv.buffer = ib; const send = ac.createGain(); send.gain.value = 0.2; master.connect(send); send.connect(rv); rv.connect(comp);
       noiseBuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
       const d = noiseBuf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -1052,6 +1119,8 @@ function hurt(e, dmg, o = {}) {
     }
     if (e.boss) { pillar(e.x, e.z, 5, 60, c, 0.8); shockAt(e.x, e.z, 1); burst(e.x, 2.5, e.z, 240, c, 26, 1.0); addRing(e.x, e.z, 26, 34, c); addRing(e.x, e.z, 16, 18, [2, 2, 2]); shake = Math.max(shake, 2); flash = Math.max(flash, 0.3); sfx.bossDie(); say('首领已被击败', 3); }
     else { burst(e.x, e.h * 0.5, e.z, 12, c, 10, 0.45); sfx.pop(combo); }
+    for (let i = 0; i < (e.big ? 8 : 3); i++) spark(e.x + rand(-e.r, e.r), e.alt + e.h * 0.6, e.z + rand(-e.r, e.r), rand(-0.6, 0.6), rand(4, 8), rand(-0.6, 0.6), [c[0] * 0.5 + 0.7, c[1] * 0.5 + 0.7, c[2] * 0.5 + 0.7], rand(0.6, 1.1), -1);
+    if (e.big && !e.fly) { if (marks.length < 22) marks.push({ x: e.x, z: e.z, r: e.r * 2.4, t: 0, life: 3.2, col: [c[0] * 0.45, c[1] * 0.45, c[2] * 0.45], op: 0.3 }); if (rings.length < 12) addRing(e.x, e.z, 9, 22, c); }
     coinDrop(e.x, e.h * 0.6, e.z, e.boss ? 10 : e.big ? 5 : 1);
     chargeUlts(e.big ? 3 : 0.22 + Math.min(combo, 60) * 0.008);
     const bx = e.x, bz = e.z, bd = e.maxHp * (e.big ? 0.15 : CHAIN_K), bR = e.big ? 9 : 2.4 + e.r, bc = [e.col[0] * 0.9 + 0.3, e.col[1] * 0.9 + 0.2, e.col[2] * 0.9 + 0.1];
@@ -1254,7 +1323,7 @@ function updateTowers(dt) {
     if (t.cdT > 0) continue;
     t.cdT = d.cd;
     const mx = t.x + Math.sin(t.face) * 2, mz = t.z + Math.cos(t.face) * 2;
-    if (t.type === 'arrow') { t.kick = 0.35; shots.push({ kind: 'arrow', x: t.x, y: my, z: t.z, e, tx: e.x, ty: e.cy, tz: e.z, dmg: t.dmg, lv: t.lv }); sfx.arrow(); }
+    if (t.type === 'arrow') { t.kick = 0.35; burst(mx, my, mz, 3, [0.9, 2.6, 1.2], 5, 0.18, 0.5); shots.push({ kind: 'arrow', x: t.x, y: my, z: t.z, e, tx: e.x, ty: e.cy, tz: e.z, dmg: t.dmg, lv: t.lv }); sfx.arrow(); }
     else if (t.type === 'cannon' || t.type === 'mortar') {
       const big = t.type === 'mortar', dist = Math.hypot(e.x - t.x, e.z - t.z), T = big ? 1.0 + dist / 60 : dist / 34 + 0.15, sp = e.frozenT > 0 ? 0 : e.speed * (e.slowT > 0 ? 1 - e.slowK : 1);
       t.kick = big ? 0.9 : 0.7;
@@ -1268,7 +1337,7 @@ function updateTowers(dt) {
       burst(sx, my, sz, 8, [3.4, 3, 1.6], 7, 0.25); burst(e.x, e.cy, e.z, 14, [3.4, 3, 1.6], 12, 0.35);
       hurt(e, t.dmg); sfx.snipe();
     } else {                                                     // 电塔：连锁闪电
-      const hit = [e], col = [2.0, 1.4, 3.2];
+      const hit = [e], col = [2.0, 1.4, 3.2]; t.kick = 0.25; burst(t.x, my + 0.4, t.z, 6, col, 6, 0.2, 0.8);
       let cur = e, px = t.x, py = my, pz = t.z, dmg = t.dmg;
       for (let n = 0; n < t.chain; n++) {
         jag(px, py, pz, cur.x, cur.cy, cur.z, 0.16 + t.lv * 0.06, col, 0.13);
@@ -1351,6 +1420,7 @@ function impact(x, z, R, dmg, tr, big) {
       jag(x, 0.15, z, x + Math.cos(a) * len, 0.15, z + Math.sin(a) * len, 0.55, [3, 1.1, 0.2], rand(1.8, 3), 0.13);
     }
     burns.push({ x, z, r: R * 0.85, t: 0, life: 4.5, tick: 0, dmg: dmg * 0.07, tr });
+    for (let i = 0; i < 20; i++) after(0.4 + i * 0.2, () => { for (let k = 0; k < 6; k++) { const a = rand(6.28), d = rand(R * 0.9); spark(x + Math.cos(a) * d, 0.2, z + Math.sin(a) * d, rand(-1, 1), rand(3, 9), rand(-1, 1), [3, rand(0.8, 1.8), 0.2], rand(0.8, 1.6), -1.5); } });   // 坑里的余烬
     marks.push({ x, z, r: R * 0.85, t: 0, life: 4.5, col: [1.0, 0.3, 0.05], op: 0.35 });
     flash = Math.max(flash, 0.5); flashC.set(1, 0.85, 0.6); shake = Math.max(shake, 4.5); ab = Math.max(ab, 0.14); glow = 1; slowT = 0.22; slowK = 0.08;
     shockAt(x, z, 1.5, 0.9); impactFrame(80); look(x, z, 0, 7);
@@ -1908,7 +1978,16 @@ function sync() {
     const tp = e.type, step = e.frozenT > 0 ? 0 : Math.sin(e.spin * 4), face = Math.atan2(e.dx, e.dz), fly = tp === 'swarm' || e.fly, blob = tp === 'splitter' || tp === 'mite';
     const y = e.alt + (fly ? 0.5 + step * 0.25 : tp === 'phantom' ? 0.45 + Math.sin(e.spin * 1.5) * 0.2 : Math.abs(step) * (tp === 'runner' ? 0.3 : e.big ? 0.1 : 0.18));
     const sy = fly ? 1 + step * 0.35 : blob ? 1 + step * 0.14 : 1, sx = e.phased ? 0.5 : blob ? 1 - step * 0.07 : 1;
-    put(tp, e.x, y, e.z, tp === 'runner' ? step * 0.14 : e.fly ? -0.12 : step * 0.05, face, sx, sy, sx, r, g, b);
+    const age = T - (e.t0 === undefined ? (e.t0 = T) : e.t0), grow = age < 0.35 ? 0.15 + 0.85 * (1 - (1 - age / 0.35) ** 2) : 1, punch = e.flash > 0 ? Math.min(0.2, e.flash * 1.5) : 0;   // 刚出场从小长大；挨打的一瞬间往后一仰、身子一鼓
+    const big2 = e.big ? 1 + 0.03 * Math.sin(T * 5 + e.spin) : 1;
+    put(tp, e.x, y, e.z, (tp === 'runner' ? step * 0.14 : e.fly ? -0.12 : step * 0.05) - punch * 1.4, face, sx * grow * (1 + punch) * big2, sy * grow * (1 - punch * 0.6), sx * grow * (1 + punch) * big2, r, g, b);
+    if (state === 'play') {                                      // 状态一眼看得出来：烧着的冒火、冻住的闪冰晶、被减速的滴水、首领身上往上冒黑气
+      if (e.burnT > 0 && Math.random() < 0.35) spark(e.x + rand(-e.r, e.r), e.alt + rand(0.3, e.h), e.z + rand(-e.r, e.r), 0, rand(3, 6), 0, [3, rand(0.9, 1.6), 0.2], rand(0.25, 0.5), -2);
+      if (e.frozenT > 0) { if (Math.random() < 0.12) spark(e.x + rand(-e.r, e.r), e.alt + rand(0.2, e.h), e.z + rand(-e.r, e.r), 0, rand(0.4, 1.4), 0, [1.4, 2.2, 3], rand(0.3, 0.5), 0); }
+      else if (e.slowT > 0 && Math.random() < 0.1) spark(e.x + rand(-e.r, e.r), e.alt + e.h * 0.5, e.z + rand(-e.r, e.r), 0, 0.5, 0, [0.5, 1.2, 2.4], 0.4, 9);
+      if (e.boss && Math.random() < 0.5) spark(e.x + rand(-e.r, e.r) * 1.3, rand(0.2, e.h), e.z + rand(-e.r, e.r) * 1.3, 0, rand(2, 5), 0, [e.col[0] * 2.2 + 0.2, e.col[1] * 1.1, e.col[2] * 2.2 + 0.2], rand(0.5, 1), 0);
+      if (e.big && !fly && e.frozenT <= 0) { const sg = step > 0; if (e.ls !== undefined && sg !== e.ls) burst(e.x, 0.2, e.z, e.boss ? 10 : 5, [0.55, 0.5, 0.42], 4, 0.45, 0.5); e.ls = sg; }   // 大块头每一步踩起一小团尘土
+    }
     if (e.shield > 0) put('bubble', e.x, e.alt + e.h * 0.5, e.z, 0, T * 1.5, e.r * 1.9, e.h * 0.62, e.r * 1.9, 0.12, 0.4 + 0.1 * Math.sin(T * 6), 0.95);
     if (!e.phased && (e.hp < e.maxHp || e.shield < e.maxShield || e.shield > 0)) {
       const w = e.big || 1.6 + e.r, k = clamp(e.hp / e.maxHp, 0, 1), y2 = e.alt + e.h + 1.2, hgt = e.big ? 0.6 : 0.36;
@@ -1935,6 +2014,11 @@ function sync() {
     const y = b.y0 * (1 - k * k) + (hover ? Math.sin(T * 5 + b.x) * 0.5 : 0) - (k >= 1 ? 1.2 * b.size : 0), f = k >= 1 ? 0.6 + 0.15 * Math.sin(T * 14 + b.x) : 0.8;
     put('blade', b.x, y, b.z, 0, b.rot + (hover ? T * 3 : 0), ap, ap, ap, 1.3 * f, 2.1 * f, 2.7 * f);
     if (hover) bolt(b.x, y, b.z, b.x, 0.1, b.z, 0.05 * b.size, [0.2, 0.55, 0.85]);
+  }
+  for (const t of towers) {
+    if (t.rise < 1) continue; const c = t.fxc || [1.2, 1.8, 2.4], my = t.def.my;
+    for (let i = 0; i < (t.lv === 3 ? 3 : t.lv === 2 ? 1 : 0); i++) { const a = T * 2.2 + i * 2.094 + t.x, q = 0.14 + 0.03 * Math.sin(T * 6 + i); put('shot', t.x + Math.cos(a) * 1.9, my + 0.7 + Math.sin(T * 3 + i * 2) * 0.3, t.z + Math.sin(a) * 1.9, 0, 0, q, q, q, c[0] * 0.5, c[1] * 0.5, c[2] * 0.5); }   // 二星一颗、三星三颗光珠绕着塔转
+    if ((t.type === 'cannon' || t.type === 'mortar' || t.type === 'sniper') && t.target && t.stunT <= 0 && t.cdT > 0 && t.cdT < 0.45) { const k = 1 - t.cdT / 0.45, q = 0.12 + 0.3 * k, r2 = t.type === 'sniper' ? 3.6 : 2; put('shot', t.x + Math.sin(t.face) * r2, my + (t.type === 'mortar' ? 1.2 : 0), t.z + Math.cos(t.face) * r2, 0, 0, q, q, q, 3 * k, 2.2 * k, 1.0 * k); }   // 炮口在开火前亮起来
   }
   if (state === 'play') for (const t of towers) if (t.lv < 3 && gold >= upCost(t)) put('upArrow', t.x, t.def.my + 2.6 + Math.sin(T * 4 + t.x) * 0.25, t.z, 0, T * 2.5, 1, 1, 1, 0.5, 2.2, 0.8);   // 钱够升级的塔头顶有个绿箭头
   for (const s of spikes) {
@@ -1984,7 +2068,7 @@ function sync() {
     const ud = t.mesh.userData, h = ud.head;
     ud.ring.rotation.y = T * 0.7; ud.crown.rotation.y = -T * 1.1;
     if (t.stunT > 0) continue;
-    if (!SPINNY[t.type]) { h.rotation.y = t.face; const kk = t.kick || 0; h.position.set(-Math.sin(t.face) * kk, t.def.my, -Math.cos(t.face) * kk); }
+    if (!SPINNY[t.type]) { h.rotation.y = t.face + (t.target ? 0 : Math.sin(T * 0.7 + t.x * 1.3 + t.z) * 0.55); const kk = t.kick || 0; h.position.set(-Math.sin(t.face) * kk, t.def.my, -Math.cos(t.face) * kk); }
     else { h.rotation.y = t.spin * 1.5; h.position.y = t.def.my + Math.sin(t.spin * 2) * 0.15; }
     const sc = (1 + Math.max(0, t.pop) * 1.2) * (1 + (t.lv - 1) * 0.07), rk = 1 - (1 - t.rise) * (1 - t.rise); t.mesh.scale.set(sc, sc * Math.max(0.02, rk), sc);   // 新建的塔从地里升起来
   }
@@ -2031,7 +2115,10 @@ function sync() {
   const lu = lens.uniforms;
   if (shock) { const k = shock.t / shock.life; tmpV.set(shock.x, 0, shock.z).project(camera); lu.uShock.value.set(tmpV.x * 0.5 + 0.5, tmpV.y * 0.5 + 0.5, k * 0.95, shock.str * (1 - k)); } else if (hole) { tmpV.set(hole.x, 4.2, hole.z).project(camera); lu.uShock.value.set(tmpV.x * 0.5 + 0.5, tmpV.y * 0.5 + 0.5, 0.075 + 0.012 * Math.sin(T * 9), -1.2); }   // 奇点周围一圈空间扭曲
   else lu.uShock.value.w = 0;
-  lu.uAspect.value = camera.aspect; lu.uInv.value = performance.now() < invUntil ? 1 : 0;
+  lu.tDepth.value = composer.readBuffer.depthTexture; lu.uPI.value.copy(camera.projectionMatrixInverse); lu.uProjY.value = camera.projectionMatrix.elements[5];
+  lu.uAspect.value = camera.aspect; lu.uTime.value = performance.now() / 1000; renderer.getDrawingBufferSize(lu.uPx.value); lu.uPx.value.set(1 / lu.uPx.value.x, 1 / lu.uPx.value.y);
+  litU.uT.value = performance.now() / 1000; litU.uSunV.value.copy(sun.position).normalize().transformDirection(camera.matrixWorldInverse); litU.uSunC.value.copy(sun.color);
+  lu.uInv.value = performance.now() < invUntil ? 1 : 0;
   lu.uHurt.value = hurtFx; lu.uFlash.value = flash; lu.uFlashC.value.copy(flashC); lu.uTint.value.copy(tintC); lu.uTintK.value = tintK; lu.uAb.value = ab; lu.uDark.value = dark;
   bloom.strength = 0.7 + glow * 0.25;
   pGeo.attributes.position.needsUpdate = true; pGeo.attributes.color.needsUpdate = true;
@@ -2058,7 +2145,7 @@ window.__echo = {
   get audio() { return ac ? { state: ac.state, muted, peak: audioPeak(), hum: hum ? +hum.g.gain.value.toFixed(3) : null, voice: voice ? voice.name + ' ' + voice.lang : null, canSpeak, speaking: canSpeak && speechSynthesis.speaking, combo, clips: Object.keys(clips).length, said: saidLog.slice() } : null; }, sfx, say,
   get foes() { return foes; }, get towers() { return towers; },
   step(seconds, draw = true) { if (state === 'paused') state = 'play'; for (let t = 0; t < seconds && state === 'play'; t += 1 / 60) update(1 / 60); if (draw && state === 'play') state = 'paused'; if (draw) { sync(); composer.render(); } },
-  draw() { sync(); composer.render(); },
+  draw() { sync(); composer.render(); }, lens: lens.uniforms,
   newGame, build, upgrade, sell, castUlt, startWave, pathAt, loadMap, showScreen, act,
   get map() { return { i: mapI, name: MAP.name, paths: paths.map((P) => ({ len: P.len, own: P.own, edge: P.edge })), spots: SPOTS.length, stars: save.stars }; },
   dry(on) { dry = on; },
