@@ -1,7 +1,7 @@
 // 《回声：骑手》的交通：每个路口的红绿灯、沿路行驶的车流、撞车和闯红灯。
 // 靠右行驶：朝 +z 走时右手边是 -x，朝 +x 走时右手边是 +z。
 import * as THREE from 'three';
-import { NB, HALF, ROAD, WALK, c } from './world.js?v=3';
+import { NB, HALF, ROAD, WALK, c } from './world.js?v=5';
 
 export function startTraffic(G) {
   const { world, me, hooks, rand, clamp } = G, { scene } = world, dummy = new THREE.Object3D(), tc = new THREE.Color();
@@ -57,7 +57,7 @@ export function startTraffic(G) {
     const wet = world.env.wet;
     for (const car of cars) {
       if (car.stopT > 0) { car.stopT -= dt; car.v = 0; continue; }
-      let want = car.top * (1 - wet * 0.25);
+      let want = car.top * (1 - wet * 0.25) * (G.jam || 1);
       // 前面的路口：红灯或黄灯就在停车线前停住
       const k = Math.round((car.s + HALF) / (HALF * 2 / NB)), cs = c(clamp(k, 0, NB)), dd = (cs - car.s) * car.dir;                  // 到下一个路口中心还有多远（沿行驶方向）
       const nextI = dd >= 0 ? clamp(k, 0, NB) : clamp(k + car.dir, 0, NB), nc = c(nextI), toC = (nc - car.s) * car.dir, toStop = toC - STOP;

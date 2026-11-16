@@ -10,7 +10,7 @@
 
 | | 游戏 | 一句话 | 怎么玩 |
 | --- | --- | --- | --- |
-| <img src="covers/rider.jpg" width="110"> | **第 11 期 · 骑手**<br>[在线玩](https://zhgarylu.github.io/everyday-game/rider/) | 骑电动车在老城送外卖，从上午跑到深夜 | W 加速、S 刹车、A D 转向，Y 接单。跟着路面箭头走，停进光圈自动取餐送餐。平台给每单一个时限，你越准时它给得越紧；有昼夜、五种天气、车流和红绿灯。横竖屏都能玩 |
+| <img src="covers/rider.jpg" width="110"> | **第 11 期 · 骑手**<br>[在线玩](https://zhgarylu.github.io/everyday-game/rider/) | 骑电动车在老城送外卖，从上午跑到深夜 | W 加速、S 刹车、A D 转向，Y 接单。跟着路面箭头走，停进光圈自动取餐送餐。平台给每单一个时限，你越准时它给得越紧；有昼夜、五种天气、车流和红绿灯，还有交警查车、学校限速抓拍、过马路的行人、施工占道、路边突然开的车门和高峰堵车；骑手有心情，会接到妈妈和顾客的电话。横竖屏都能玩 |
 | <img src="covers/smash.jpg" width="110"> | **第 10 期 · 怒砸办公室**<br>[在线玩](https://zhgarylu.github.io/everyday-game/smash/) | 显示器、奖杯、打卡机、老板椅、保险柜，全部砸成渣 | 点哪砸哪，按住划过去一路砸。连砸涨倍数，怒气满了暴走，保安到之前尽量砸 |
 | <img src="covers/match.jpg" width="110"> | **第 9 期 · 相亲角速配**<br>[在线玩](https://zhgarylu.github.io/everyday-game/match/) | 大妈报条件，你来判断候选人合不合适 | 全都符合往右划，有一条不符合往左划。条件越加越多、越来越绕 |
 | <img src="covers/ring.jpg" width="110"> | **第 8 期 · 夜市套圈**<br>[在线玩](https://zhgarylu.github.io/everyday-game/ring/) | 10 块钱 12 个圈，圈住什么拿什么 | 按住往上拖瞄准，松手扔圈。越远越值钱，大鹅会走，老板会“脚滑” |
@@ -54,7 +54,7 @@ index.html  hub.js   首页
 games.js             游戏清单：期数、上线日期、入口、标签、时长
 covers/              封面图（实机截图）
 td/ tide/ eat/ ...   每个游戏一个目录：index.html + game.js，语音在 voice/
-rider/               骑手：world.js 城区和渲染、sim.js 平台模拟、traffic.js 车流、game.js 骑行
+rider/               骑手：world.js 城区和渲染、sim.js 平台模拟和心情、traffic.js 车流、hazards.js 交警行人等路况、game.js 骑行
 tide/assets/         清潮的角色和图标素材，ASSET_SPEC.md 是素材规格说明
 vendor/three/        three.js 0.170 中用到的文件
 tools/gen_voice.py   预生成语音的脚本

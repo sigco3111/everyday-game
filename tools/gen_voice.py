@@ -61,8 +61,18 @@ MATCH_GROUPS = [('+8%', '', ['我要求不高的', '换个要求', '成了成了
 SMASH_GROUPS = [('+10%', '', ['开砸', '爽', '砸得好', '暴走', '这个值钱', '下一间', '保安来了', '打卡机，砸'])]
 # 骑手的台词（rider/sim.js 里 say() 用的文字）：平台的系统提示音是普通话女声，骑手自己的碎碎念是广西口音
 RIDER_SYS = '像外卖平台骑手端的系统语音播报，亲切、清晰、语速偏快，带一点机械的客服腔'
-RIDER_SYS_GROUPS = [('+12%', RIDER_SYS, ['您已上线，开始接单', '您有新的回声外卖订单', '订单即将超时，请尽快送达', '订单已超时', '已为您优化预计送达时间', '今日冲单奖励已到账', '您收到一条差评', '您收到一笔打赏', '天气恶劣，请注意安全', '电量不足，请及时换电', '到达取餐点', '到达送餐点', '请减速，目的地就在附近'])]
-RIDER_GROUPS = [('+8%', '', ['又来单了', '这么远才给这点', '出餐快点嘛老板', '哎哟，摔了', '完了，汤洒了', '搞定，下一单', '又超时了', '下雨了，单多起来了', '累死了，收工', '谢谢老板', '这系统，越跑越紧', '您的外卖到了', '爬楼去咯', '红灯，等一下'])]
+RIDER_SYS_GROUPS = [('+12%', RIDER_SYS, ['前方学校路段，请减速慢行', '您已超速', '前方施工，请注意避让', '您已上线，开始接单', '您有新的回声外卖订单', '订单即将超时，请尽快送达', '订单已超时', '已为您优化预计送达时间', '今日冲单奖励已到账', '您收到一条差评', '您收到一笔打赏', '天气恶劣，请注意安全', '电量不足，请及时换电', '到达取餐点', '到达送餐点', '请减速，目的地就在附近'])]
+# 骑手遇到的人：妈妈、顾客、站长。用能调情绪的女声，每组一条语气指令
+RIDER_NPC_GROUPS = [
+    ('-5%', '像妈妈给在外打工的孩子打电话，温柔、心疼、带点唠叨，语速慢，声音有点年纪', ['吃饭没？别太拼了，早点收工。', '下雨了，慢点骑，安全第一。', '钱够不够用？不够跟妈讲。']),
+    ('+15%', '饿着肚子等外卖等急了的年轻顾客，非常不耐烦、着急、带着火气质问', ['怎么还没到啊？我都饿死了！', '再不到我就投诉了啊！']),
+    ('+0%', '体谅外卖员的顾客，温和、真诚、带着感谢和关心', ['下雨天慢点没关系，注意安全。', '辛苦了，给你拿了瓶水。', '谢谢你啊，这么大雨还送。']),
+    ('+5%', '外卖站的站长在电话里训人，严厉、冷淡、有压迫感，公事公办', ['你这周准时率掉了啊，再这样要降级了。']),
+    ('+0%', '路口执勤的交警，严肃、干脆、有威严，但不凶', ['你好，例行检查，靠边停一下。', '没问题，走吧，注意安全。', '这次给你警告，下次要罚款了。', '违章了，开罚单。']),
+    ('+10%', '开车门不小心撞到人的司机，慌张、连声道歉', ['哎哟对不起对不起，没看到你！']),
+    ('+10%', '差点被电动车撞到的路人，又惊又气地喊', ['你怎么骑车的！']),
+]
+RIDER_GROUPS = [('+8%', '', ['完了，有交警', '又罚款', '吓死我了', '看路啊大哥', '堵死了', '今天手气不错', '这单舒服', '还是有好人的', '妈，我吃了，你别操心', '催什么催，我也想快', '又扣我钱', '唉，不想跑了', '算了，再跑一单', '顶得住', '好累啊', '歇口气先', '又来单了', '这么远才给这点', '出餐快点嘛老板', '哎哟，摔了', '完了，汤洒了', '搞定，下一单', '又超时了', '下雨了，单多起来了', '累死了，收工', '谢谢老板', '这系统，越跑越紧', '您的外卖到了', '爬楼去咯', '红灯，等一下'])]
 SETS = {'td': dict(groups=GROUPS, out=OUT, voice='zh_female_vv_uranus_bigtts', dialect='shaanxi', resource='seed-tts-2.0'),
         'eat': dict(groups=EAT_GROUPS, out=os.path.join(ROOT, 'eat', 'voice'), voice='zh_male_guangxiyuanzhou_moon_bigtts', dialect='none', resource='seed-tts-1.0'),
         'scrub': dict(groups=SCRUB_GROUPS, out=os.path.join(ROOT, 'scrub', 'voice'), voice='zh_male_guangxiyuanzhou_moon_bigtts', dialect='none', resource='seed-tts-1.0'),
@@ -73,6 +83,7 @@ SETS = {'td': dict(groups=GROUPS, out=OUT, voice='zh_female_vv_uranus_bigtts', d
         'match': dict(groups=MATCH_GROUPS, out=os.path.join(ROOT, 'match', 'voice'), voice='zh_male_guangxiyuanzhou_moon_bigtts', dialect='none', resource='seed-tts-1.0'),
         'smash': dict(groups=SMASH_GROUPS, out=os.path.join(ROOT, 'smash', 'voice'), voice='zh_male_guangxiyuanzhou_moon_bigtts', dialect='none', resource='seed-tts-1.0'),
         'rider': dict(groups=RIDER_GROUPS, out=os.path.join(ROOT, 'rider', 'voice'), voice='zh_male_guangxiyuanzhou_moon_bigtts', dialect='none', resource='seed-tts-1.0'),
+        'rider_npc': dict(groups=RIDER_NPC_GROUPS, out=os.path.join(ROOT, 'rider', 'voice_npc'), voice='zh_female_vv_uranus_bigtts', dialect='none', resource='seed-tts-2.0'),
         'rider_sys': dict(groups=RIDER_SYS_GROUPS, out=os.path.join(ROOT, 'rider', 'voice_sys'), voice='zh_female_vv_uranus_bigtts', dialect='none', resource='seed-tts-2.0'),
         'tide': dict(groups=TIDE_GROUPS, out=os.path.join(ROOT, 'tide', 'voice'), voice='zh_male_guangxiyuanzhou_moon_bigtts', dialect='none', resource='seed-tts-1.0')}
 

@@ -36,6 +36,10 @@
   #pin { position: absolute; left: 0; top: 0; display: none; transform: translate(-50%, -100%); padding: 5px 12px 6px; border-radius: 12px; background: #ffb02e; color: #241703; font-weight: 800; font-size: 14px; text-shadow: none; white-space: nowrap; box-shadow: 0 3px 10px rgba(0, 0, 0, .5); }
   #pin.go { background: #5aff9a; } #pin i { font-style: normal; font-weight: 400; margin-left: 6px; }
   #cta { position: absolute; left: 50%; top: 62%; transform: translateX(-50%); display: none; padding: 12px 22px; font-size: 18px; font-weight: 800; text-align: center; border: 2px solid #ffd66e; background: rgba(10, 14, 22, .85); border-radius: 14px; white-space: nowrap; } #cta small { display: block; font-size: 13px; font-weight: 400; color: #c9d6e6; margin-top: 2px; }
+  #moodD { font-style: normal; font-weight: 800; margin-left: 4px; } #moodD.up { color: #7dffa8; } #moodD.dn { color: #ff8a7a; }
+  #msg { position: absolute; left: 12px; top: 214px; width: 250px; display: none; padding: 10px 14px; font-size: 15px; line-height: 1.5; border-left: 5px solid #8be9ff; animation: tin .25s ease-out; box-sizing: border-box; }
+  #msg b { display: block; font-size: 12px; font-weight: 400; color: #a9b8ca; margin-bottom: 2px; } #msg.mom { border-left-color: #ffb3c7; } #msg.bad { border-left-color: #ff6a5a; } #msg.good { border-left-color: #35c46a; }
+  #lim { position: absolute; right: -54px; bottom: 6px; width: 44px; height: 44px; border-radius: 50%; background: #fff; border: 5px solid #d8281c; color: #111; font-weight: 900; font-size: 19px; display: none; align-items: center; justify-content: center; text-shadow: none; box-sizing: border-box; } #lim.over { animation: limb .3s steps(2) infinite; } @keyframes limb { 50% { background: #ff5a4a; } }
   #banner { position: absolute; top: 34%; left: 0; right: 0; text-align: center; font-size: 34px; font-weight: 900; letter-spacing: 4px; text-shadow: 0 0 18px rgba(0, 0, 0, .8), 0 3px 6px #000; }
   #hint { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); padding: 7px 16px; font-size: 13px; white-space: nowrap; }
   #prog { position: absolute; left: 50%; bottom: 62px; transform: translateX(-50%); width: 240px; padding: 8px 12px; font-size: 13px; text-align: center; display: none; } #prog .bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .15); margin-top: 6px; overflow: hidden; } #prog .bar i { display: block; height: 100%; background: #ffd66e; }
@@ -48,7 +52,8 @@
   #screen .go { margin-top: 22px; padding: 13px 46px; font-size: 19px; font-weight: 800; letter-spacing: 6px; cursor: pointer; border-radius: 14px; color: #2a1d02; background: #ffd66e; border: 0; box-shadow: 0 5px 0 #a8701a, 0 10px 18px rgba(0, 0, 0, .5); font-family: inherit; }
   #home { position: absolute; left: 12px; top: 12px; z-index: 30; display: flex; align-items: center; height: 44px; padding: 0 16px; border-radius: 12px; background: rgba(10, 14, 22, .8); border: 1px solid rgba(255, 255, 255, .25); color: #fff; font-size: 14px; text-decoration: none; }
   #screen[style*="display: none"] ~ #home { display: none; }
-  @media (max-width: 720px) { #mini { width: 120px; height: 120px; } #topbar { top: auto; bottom: 110px; font-size: 12px; gap: 10px; padding: 6px 10px; } #topbar b { font-size: 14px; } #phone { top: 8px; right: 8px; width: 56vw; padding: 8px; } .ord { font-size: 12px; } #hint { display: none; } #touch { display: flex; } #toasts { top: 215px; } #nav { top: 148px; } #cta { top: 56%; font-size: 15px; } }
+  @media (min-width: 721px) and (max-width: 1240px) { #topbar { left: 214px; transform: none; gap: 14px; padding: 8px 14px; } #nav { top: 62px; } }
+  @media (max-width: 720px) { #mini { width: 120px; height: 120px; } #topbar { top: auto; bottom: 110px; font-size: 12px; gap: 10px; padding: 6px 10px; } #topbar b { font-size: 14px; } #phone { top: 8px; right: 8px; width: 56vw; padding: 8px; } .ord { font-size: 12px; } #hint { display: none; } #touch { display: flex; } #toasts { top: 215px; } #nav { top: 148px; } #cta { top: 56%; font-size: 15px; } .hideS { display: none; } #msg { top: auto; bottom: 150px; left: 8px; width: 62vw; font-size: 14px; } }
 </style>
 <script type="importmap">
 { "imports": {
@@ -61,16 +66,17 @@
 <div id="stage">
   <div id="hud">
     <div id="mini" class="panel"><canvas id="map" width="360" height="360"></canvas></div>
-    <div id="topbar" class="panel"><span><b id="clock">10:30</b> <span id="wx">晴</span></span><span>今日 <b id="money">¥0</b></span><span>服务分 <b id="rating">90</b></span><span>完成 <b id="done">0</b> 单</span></div>
+    <div id="topbar" class="panel"><span><b id="clock">10:30</b> <span id="wx">晴</span></span><span>今日 <b id="money">¥0</b></span><span>服务分 <b id="rating">90</b></span><span class="hideS">完成 <b id="done">0</b> 单</span><span>心情 <b id="mood">🙂 70</b><i id="moodD"></i></span></div>
     <div id="phone" class="panel"><h4>回声外卖 · 骑手端 <span id="lvl"></span></h4><div id="orders"></div>
       <div id="offer"><div id="oText"></div><div class="bar"><i id="oBar"></i></div><div class="row"><button id="oNo">拒单 N</button><button id="oYes">接单 Y</button></div></div></div>
     <div id="nav" class="panel"><span id="navA"><svg viewBox="0 0 24 24" fill="#241703"><path d="M12 2l8 18-8-4.500L4 20z"/></svg></span><span><b id="navT"></b><small id="navS"></small></span></div>
     <div id="pin"></div>
     <div id="cta" class="panel"></div>
+    <div id="msg" class="panel"></div>
     <div id="toasts"></div>
     <div id="banner"></div>
     <div id="prog" class="panel"><span id="progT"></span><div class="bar"><i id="progB"></i></div></div>
-    <div id="speed" class="panel"><b id="kmh">0</b> km/h<i id="batt">电量 100%</i></div>
+    <div id="speed" class="panel"><span id="lim">30</span><b id="kmh">0</b> km/h<i id="batt">电量 100%</i></div>
     <div id="hint" class="panel">W 加速　S 刹车　A D 转向　Y 接单　N 拒单　Tab 切换目标　M 静音</div>
     <div id="touch"><button id="tBrake">刹车</button><button id="tGo">加速</button></div>
   </div>

@@ -239,9 +239,9 @@ export function createWorld(stage) {
   for (const rt of [composer.renderTarget1, composer.renderTarget2]) { rt.depthTexture = new THREE.DepthTexture(1, 1); rt.depthTexture.type = THREE.UnsignedIntType; }
   composer.addPass(new RenderPass(scene, camera));
   const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.55, 0.6, 0.92); composer.addPass(bloom);
-  const grade = new ShaderPass({ uniforms: { tDiffuse: { value: null }, tDepth: { value: null }, uPI: { value: new THREE.Matrix4() }, uProjY: { value: 1 }, uAspect: { value: 1 }, uTime: { value: 0 }, uPx: { value: new THREE.Vector2() }, uSpeed: { value: 0 }, uHurt: { value: 0 }, uWetLens: { value: 0 }, uExpo: { value: 1 } },
+  const grade = new ShaderPass({ uniforms: { tDiffuse: { value: null }, tDepth: { value: null }, uPI: { value: new THREE.Matrix4() }, uProjY: { value: 1 }, uAspect: { value: 1 }, uTime: { value: 0 }, uPx: { value: new THREE.Vector2() }, uSpeed: { value: 0 }, uHurt: { value: 0 }, uWetLens: { value: 0 }, uExpo: { value: 1 }, uSat: { value: 1.12 } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `uniform sampler2D tDiffuse, tDepth; uniform mat4 uPI; uniform float uProjY, uAspect, uTime, uSpeed, uHurt, uWetLens, uExpo; uniform vec2 uPx; varying vec2 vUv;
+    fragmentShader: `uniform sampler2D tDiffuse, tDepth; uniform mat4 uPI; uniform float uProjY, uAspect, uTime, uSpeed, uHurt, uWetLens, uExpo, uSat; uniform vec2 uPx; varying vec2 vUv;
       float gh(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
       vec3 vpos(vec2 uv) { vec4 c = uPI * vec4(uv * 2.0 - 1.0, texture2D(tDepth, uv).x * 2.0 - 1.0, 1.0); return c.xyz / c.w; }
       float aoAt(vec2 uv) {
@@ -261,7 +261,7 @@ export function createWorld(stage) {
         col *= uExpo;
         vec3 x = col * 1.05; vec3 film = clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); col = mix(col, film, 0.9);
         float l2 = dot(col, vec3(0.3, 0.6, 0.1)); col *= mix(vec3(0.93, 1.0, 1.08), vec3(1.05, 1.0, 0.94), smoothstep(0.05, 0.7, l2));
-        col = mix(vec3(l2), col, 1.12); col = max((col - 0.5) * 1.06 + 0.5, 0.0);
+        col = mix(vec3(l2), col, uSat); col = max((col - 0.5) * 1.06 + 0.5, 0.0);
         col *= 1.0 - smoothstep(0.42, 1.0, r) * 0.55; col += vec3(0.5, 0.0, 0.0) * uHurt * smoothstep(0.25, 0.8, r);
         col += (gh(vUv * vec2(1733.0, 977.0) + fract(uTime) * 61.0) - 0.5) * 0.03;
         gl_FragColor = vec4(col, 1.0);
