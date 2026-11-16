@@ -80,5 +80,10 @@ export const GAMES = [
     intro: '芯片公司核弹厂市值垫底，创始人老黄被请回来救场。12 个季度里搞研发、抢产能、在市场版图上一格一格抢地盘，对手也会来抢你的。发布会上参数吹多大自己定，吹过头就翻车。人物和公司纯属虚构。',
     tags: ['策略', '回合制', '商战'], screen: '竖屏', mins: 6, more: '点着玩，要动脑',
     record: () => { const n = +(localStorage.getItem('echo_chip_best') || 0); return n ? '最高市值 <b>' + n.toLocaleString() + ' 亿</b>' : ''; },
+  },  {
+    id: 'gz', no: 13, date: '2026-11-16', name: '广州漂移', url: 'gz/', cover: 'covers/gz.jpg', pos: '50% 55%',
+    intro: '雨后的广州夜晚，骑着电鸡甩尾送外卖。一条环线从猎德大桥进珠江新城，绕过中山纪念堂，过海珠桥钻进骑楼老街和城中村，再从广州塔脚下回来。漂移攒小费，松手喷出去，撞了汤会洒，倒计时走完就收工。',
+    tags: ['竞速', '漂移', '大作感'], screen: '横竖屏', mins: 3, more: '键盘或触屏',
+    record: () => { const n = +(localStorage.getItem('echo_gz_best') || 0); return n ? '最高收入 <b>¥' + n.toLocaleString() + '</b>' : ''; },
   },
 ];

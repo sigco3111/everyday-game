@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>回声 · 广州漂移</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #04050a; overflow: hidden; touch-action: none;
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #f2f6fa; user-select: none; -webkit-user-select: none; }
+  #stage { position: absolute; inset: 0; overflow: hidden; }
+  canvas { display: block; }
+  #hud, #screen { position: absolute; inset: 0; }
+  #hud { display: none; pointer-events: none; text-shadow: 0 1px 4px rgba(0, 0, 0, .9); }
+  .panel { background: rgba(8, 10, 20, .62); border: 1px solid rgba(255, 255, 255, .14); border-radius: 14px; backdrop-filter: blur(6px); }
+  #timer { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); font-size: 46px; font-weight: 900; font-style: italic; font-variant-numeric: tabular-nums; letter-spacing: 1px; text-shadow: 0 0 18px rgba(0, 220, 255, .7), 0 2px 6px #000; }
+  #timer.low { color: #ff5a4a; text-shadow: 0 0 18px rgba(255, 60, 40, .9), 0 2px 6px #000; animation: pulse .5s infinite; } #timer small { font-size: 18px; margin-left: 2px; }
+  #tadd { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); font-size: 20px; font-weight: 900; color: #5dffb0; opacity: 0; }
+  @keyframes pulse { 50% { transform: translateX(-50%) scale(1.12); } }
+  #order { position: absolute; left: 12px; top: 12px; width: min(270px, 44vw); padding: 9px 12px; box-sizing: border-box; border-left: 5px solid #4dffa0; }
+  #order.drop { border-left-color: #ffb040; } #oTag { font-size: 12px; font-weight: 800; color: #4dffa0; letter-spacing: 2px; } #order.drop #oTag { color: #ffb040; }
+  #oName { font-size: 16px; font-weight: 800; margin: 2px 0; line-height: 1.3; } #oItem { font-size: 12px; color: #b8c6da; }
+  #oBar { height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .15); margin-top: 7px; overflow: hidden; } #oBar i { display: block; height: 100%; width: 0; background: currentColor; color: #4dffa0; } #order.drop #oBar i { color: #ffb040; }
+  #oDist { float: right; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  #right { position: absolute; right: 12px; top: 12px; text-align: right; }
+  #money { font-size: 30px; font-weight: 900; font-style: italic; color: #ffd84a; font-variant-numeric: tabular-nums; } #cnt { font-size: 13px; color: #c8d4e6; }
+  #food { margin-top: 6px; font-size: 12px; display: none; } #food span { display: inline-block; vertical-align: middle; width: 78px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .18); overflow: hidden; margin-left: 4px; } #food i { display: block; height: 100%; background: #5dffb0; }
+  #mini { margin-top: 8px; width: 112px; height: 100px; opacity: .92; }
+  #speed { position: absolute; left: 16px; bottom: 16px; font-style: italic; } #kmh { font-size: 54px; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; } #speed small { font-size: 14px; margin-left: 4px; opacity: .85; }
+  #charge { width: 150px; height: 9px; margin-top: 6px; border-radius: 5px; background: rgba(255, 255, 255, .16); overflow: hidden; transform: skewX(-14deg); } #charge i { display: block; height: 100%; width: 0; background: #39b6ff; box-shadow: 0 0 10px currentColor; }
+  #drift { position: absolute; left: 50%; top: 24%; transform: translateX(-50%); text-align: center; font-style: italic; opacity: 0; transition: opacity .2s; white-space: nowrap; }
+  #dPts { font-size: 40px; font-weight: 900; color: #fff; text-shadow: 0 0 16px #ff3ad0, 0 2px 6px #000; } #dMul { font-size: 22px; font-weight: 900; color: #ffe14a; margin-left: 8px; } #dTag { font-size: 14px; letter-spacing: 6px; color: #ff9ae8; }
+  #zone { position: absolute; top: 37%; left: 0; right: 0; text-align: center; font-size: 34px; font-weight: 900; letter-spacing: 12px; font-style: italic; opacity: 0; text-shadow: 0 0 22px rgba(0, 220, 255, .9), 0 3px 8px #000; }
+  #zone small { display: block; font-size: 13px; letter-spacing: 6px; font-weight: 400; margin-top: 4px; opacity: .85; }
+  #toasts { position: absolute; left: 12px; top: 112px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+  .toast { padding: 6px 16px; border-radius: 999px; background: rgba(8, 10, 20, .8); border: 1px solid rgba(255, 255, 255, .2); font-size: 15px; font-weight: 800; white-space: nowrap; animation: tin .25s ease-out; }
+  .toast.good { border-color: #35c46a; color: #9ff0b8; } .toast.bad { border-color: #ff6a5a; color: #ffb4aa; } .toast.gold { border-color: #ffd84a; color: #ffe9a0; }
+  @keyframes tin { from { opacity: 0; transform: translateX(-14px); } }
+  #count { position: absolute; top: 34%; left: 0; right: 0; text-align: center; font-size: 110px; font-weight: 900; font-style: italic; text-shadow: 0 0 30px rgba(255, 60, 200, .9), 0 4px 10px #000; }
+  #hint { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); padding: 6px 16px; font-size: 13px; white-space: nowrap; }
+  #touch { position: absolute; right: 14px; bottom: 18px; display: none; gap: 12px; align-items: flex-end; pointer-events: auto; }
+  #touch button { border-radius: 50%; border: 2px solid rgba(255, 255, 255, .35); background: rgba(8, 10, 20, .55); color: #fff; font: inherit; font-weight: 900; touch-action: none; }
+  #tBrake { width: 66px; height: 66px; font-size: 14px; } #tDrift { width: 104px; height: 104px; font-size: 20px; border-color: #ff5ad8 !important; box-shadow: 0 0 18px rgba(255, 60, 200, .5) inset; } #tDrift.on { background: rgba(255, 60, 200, .5); }
+  #steerTip { position: absolute; left: 18px; bottom: 96px; font-size: 13px; opacity: .8; display: none; }
+  #screen { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box; background: linear-gradient(180deg, rgba(4, 5, 12, .2), rgba(4, 5, 12, .15) 40%, rgba(4, 5, 12, .86)); }
+  #screen h1 { font-weight: 900; font-style: italic; font-size: clamp(50px, 11vw, 104px); letter-spacing: 6px; margin: 0; line-height: 1.05; background: linear-gradient(180deg, #fff 30%, #ff6ae0 62%, #ff8a2a); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 22px rgba(255, 60, 200, .55)) drop-shadow(0 4px 6px #000); }
+  #screen .tag { font-size: 13px; letter-spacing: 8px; color: #7defff; margin-bottom: 6px; }
+  #screen .sub { font-size: 15px; color: rgba(230, 238, 248, .92); margin: 10px 0 12px; line-height: 1.8; }
+  #screen .help { font-size: 13px; line-height: 2; color: rgba(215, 226, 240, .92); } #screen .help b { color: #ffe14a; }
+  #screen table { margin: 12px auto 0; border-collapse: collapse; font-size: 15px; } #screen td { padding: 4px 16px; text-align: left; } #screen td:last-child { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+  #screen .big { font-size: 56px; font-weight: 900; font-style: italic; color: #ffd84a; text-shadow: 0 0 22px rgba(255, 200, 60, .6), 0 3px 6px #000; }
+  #screen .go { margin-top: 20px; padding: 14px 54px; font-size: 21px; font-weight: 900; font-style: italic; letter-spacing: 6px; cursor: pointer; border-radius: 12px; color: #fff; background: linear-gradient(90deg, #ff3ad0, #ff8a2a); border: 0; box-shadow: 0 0 26px rgba(255, 60, 200, .6), 0 6px 14px rgba(0, 0, 0, .6); font-family: inherit; transform: skewX(-8deg); }
+  #home { position: absolute; left: 12px; top: 12px; z-index: 30; display: flex; align-items: center; height: 44px; padding: 0 16px; border-radius: 12px; background: rgba(8, 10, 20, .8); border: 1px solid rgba(255, 255, 255, .25); color: #fff; font-size: 14px; text-decoration: none; }
+  #screen[style*="display: none"] ~ #home { display: none; }
+  @media (max-width: 720px), (pointer: coarse) { #hint { display: none; } #touch { display: flex; } #steerTip { display: block; } #speed { bottom: 130px; } #kmh { font-size: 40px; } #charge { width: 110px; } }
+  @media (max-width: 720px) { #timer { font-size: 36px; top: 76px; } #tadd { top: 118px; } #money { font-size: 24px; } #mini { display: none; } #count { font-size: 76px; } #zone { font-size: 26px; letter-spacing: 8px; } #dPts { font-size: 32px; } #drift { top: 27%; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "../vendor/three/build/three.module.js",
+  "three/addons/": "../vendor/three/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="stage">
+  <div id="hud">
+    <div id="order" class="panel"><span id="oDist"></span><div id="oTag">取餐</div><div id="oName"></div><div id="oItem"></div><div id="oBar"><i></i></div></div>
+    <div id="timer">0.0</div><div id="tadd"></div>
+    <div id="right"><div id="money">¥0</div><div id="cnt">已送 0 单</div><div id="food">餐品完好<span><i id="foodB"></i></span></div><canvas id="mini" width="224" height="200"></canvas></div>
+    <div id="drift"><div id="dTag">漂 移</div><span id="dPts">0</span><span id="dMul"></span></div>
+    <div id="zone"></div>
+    <div id="toasts"></div>
+    <div id="count"></div>
+    <div id="speed"><span id="kmh">0</span><small>km/h</small><div id="charge"><i></i></div></div>
+    <div id="hint" class="panel">A D 转向　空格 按住漂移，松开喷射　S 刹车　M 静音</div>
+    <div id="steerTip">← 左半屏左右滑动转向 →</div>
+    <div id="touch"><button id="tBrake">刹车</button><button id="tDrift">漂移</button></div>
+  </div>
+  <div id="screen"></div>
+  <a id="home" href="../">‹ 游戏厅</a>
+</div>
+<script type="module">import("./game.js?t=" + Date.now());</script>
+</body>
+</html>

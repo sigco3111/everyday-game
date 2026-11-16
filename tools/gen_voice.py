@@ -61,6 +61,8 @@ MATCH_GROUPS = [('+8%', '', ['我要求不高的', '换个要求', '成了成了
 SMASH_GROUPS = [('+10%', '', ['开砸', '爽', '砸得好', '暴走', '这个值钱', '下一间', '保安来了', '打卡机，砸'])]
 # 皮衣老黄的台词（chip/game.js 里 say() 用的文字）
 CHIP_GROUPS = [('+8%', '', ['我回来了', '皮衣穿好，开干', '拿下', '这块地盘归我了', '货不够啊', '钱不够啊', '地盘被抢了', '稳住，别慌', '还有一件事', '买得越多，省得越多', '全场起立', '吹过头了', '市值第一了', '又被赶走了', '王者归来'])]
+# 广州漂移的台词（gz/game.js 里 say() 用的文字），粤语
+GZ_GROUPS = [('+6%', '', ['开工啦', '你嘅外卖到啦', '多谢晒', '好嘢', '犀利', '漂移啊', '哎呀，撞亲啦', '啲汤倒泻晒啦', '快啲啦', '收工啦'])]
 # 骑手的台词（rider/sim.js 里 say() 用的文字）：平台的系统提示音是普通话女声，骑手自己的碎碎念是广西口音
 RIDER_SYS = '像外卖平台骑手端的系统语音播报，亲切、清晰、语速偏快，带一点机械的客服腔'
 RIDER_SYS_GROUPS = [('+12%', RIDER_SYS, ['前方学校路段，请减速慢行', '您已超速', '前方施工，请注意避让', '您已上线，开始接单', '您有新的回声外卖订单', '订单即将超时，请尽快送达', '订单已超时', '已为您优化预计送达时间', '今日冲单奖励已到账', '您收到一条差评', '您收到一笔打赏', '天气恶劣，请注意安全', '电量不足，请及时换电', '到达取餐点', '到达送餐点', '请减速，目的地就在附近'])]
@@ -85,6 +87,7 @@ SETS = {'td': dict(groups=GROUPS, out=OUT, voice='zh_female_vv_uranus_bigtts', d
         'match': dict(groups=MATCH_GROUPS, out=os.path.join(ROOT, 'match', 'voice'), voice='zh_male_guangxiyuanzhou_moon_bigtts', dialect='none', resource='seed-tts-1.0'),
         'smash': dict(groups=SMASH_GROUPS, out=os.path.join(ROOT, 'smash', 'voice'), voice='zh_male_guangxiyuanzhou_moon_bigtts', dialect='none', resource='seed-tts-1.0'),
         'chip': dict(groups=CHIP_GROUPS, out=os.path.join(ROOT, 'chip', 'voice'), voice='zh_male_guangxiyuanzhou_moon_bigtts', dialect='none', resource='seed-tts-1.0'),
+        'gz': dict(groups=GZ_GROUPS, out=os.path.join(ROOT, 'gz', 'voice'), voice='zh_female_wanqudashu_moon_bigtts', dialect='none', resource='seed-tts-1.0'),
         'rider': dict(groups=RIDER_GROUPS, out=os.path.join(ROOT, 'rider', 'voice'), voice='zh_male_guangxiyuanzhou_moon_bigtts', dialect='none', resource='seed-tts-1.0'),
         'rider_npc': dict(groups=RIDER_NPC_GROUPS, out=os.path.join(ROOT, 'rider', 'voice_npc'), voice='zh_female_vv_uranus_bigtts', dialect='none', resource='seed-tts-2.0'),
         'rider_sys': dict(groups=RIDER_SYS_GROUPS, out=os.path.join(ROOT, 'rider', 'voice_sys'), voice='zh_female_vv_uranus_bigtts', dialect='none', resource='seed-tts-2.0'),
