@@ -69,4 +69,10 @@ export const GAMES = [
     tags: ['破坏', '解压', '手速'], screen: '竖屏', mins: 2, more: '点着划着砸',
     record: () => { const n = +(localStorage.getItem('echo_smash_best') || 0); return n ? '最高损失 <b>¥' + n.toLocaleString() + '</b>' : ''; },
   },
+  {
+    id: 'rider', no: 11, date: '2026-11-16', name: '骑手', url: 'rider/', cover: 'covers/rider.jpg', pos: '50% 58%',
+    intro: '骑电动车在老城送外卖，从上午跑到深夜，晴、雨、雾轮着来。平台给每单一个时限：超时扣钱，你越准时，系统给的时间越紧。红灯闯不闯、暴雨天接不接单，自己掂量。',
+    tags: ['模拟', '驾驶', '大作感'], screen: '横竖屏', mins: 12, more: '键盘或触屏',
+    record: () => { try { const s = JSON.parse(localStorage.getItem('echo_rider')) || {}; return s.best ? '最高日入 <b>¥' + s.best.toFixed(1) + '</b>' : ''; } catch (e) { return ''; } },
+  },
 ];
