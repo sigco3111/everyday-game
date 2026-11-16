@@ -75,4 +75,10 @@ export const GAMES = [
     tags: ['模拟', '驾驶', '大作感'], screen: '横竖屏', mins: 12, more: '键盘或触屏',
     record: () => { try { const s = JSON.parse(localStorage.getItem('echo_rider')) || {}; return s.best ? '最高日入 <b>¥' + s.best.toFixed(1) + '</b>' : ''; } catch (e) { return ''; } },
   },
+  {
+    id: 'chip', no: 12, date: '2026-11-16', name: '皮衣老黄', url: 'chip/', cover: 'covers/chip.jpg', pos: '50% 50%',
+    intro: '芯片公司核弹厂市值垫底，创始人老黄被请回来救场。12 个季度里搞研发、抢产能、在市场版图上一格一格抢地盘，对手也会来抢你的。发布会上参数吹多大自己定，吹过头就翻车。人物和公司纯属虚构。',
+    tags: ['策略', '回合制', '商战'], screen: '竖屏', mins: 6, more: '点着玩，要动脑',
+    record: () => { const n = +(localStorage.getItem('echo_chip_best') || 0); return n ? '最高市值 <b>' + n.toLocaleString() + ' 亿</b>' : ''; },
+  },
 ];

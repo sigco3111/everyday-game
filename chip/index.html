@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>回声 · 皮衣老黄</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #030507; overflow: hidden; touch-action: none;
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #f2fff0; user-select: none; -webkit-user-select: none; }
+  #stage { position: relative; height: 100%; margin: 0 auto; overflow: hidden; background: #060a10; }
+  canvas.bg { display: block; position: absolute; inset: 0; }
+  #hud, #screen { position: absolute; inset: 0; }
+  #hud { display: none; pointer-events: none; } #hud > * { pointer-events: auto; }
+  #top { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; gap: 6px; }
+  #top span { flex: 1; padding: 5px 4px; text-align: center; border-radius: 12px; background: rgba(10, 22, 16, .86); border: 1px solid rgba(140, 255, 90, .35); }
+  #top small { display: block; font-size: 11px; color: rgba(220, 255, 215, .7); }
+  #top b { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; } #top b em { font-style: normal; font-size: 12px; font-weight: 400; margin-left: 3px; }
+  #cap { color: #a8ff5a; } #cash { color: #ffe27a; }
+  #rank { position: absolute; top: 62px; left: 8px; right: 8px; display: flex; gap: 4px; pointer-events: none; }
+  #rank span { flex: 1; padding: 3px 2px; border-radius: 8px; font-size: 11px; text-align: center; background: rgba(8, 12, 18, .78); border: 1px solid rgba(255, 255, 255, .14); white-space: nowrap; overflow: hidden; }
+  #rank span.me { border-color: #8cff5a; } #rank span.out { opacity: .4; text-decoration: line-through; } #rank i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 3px; } #rank b { font-variant-numeric: tabular-nums; }
+  #panel { position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 8px 10px; background: linear-gradient(rgba(6, 12, 10, 0), rgba(6, 12, 10, .92) 22%); }
+  #stats { display: flex; gap: 6px; margin-bottom: 7px; }
+  #stats div { flex: 1; padding: 5px 6px; border-radius: 10px; background: rgba(12, 24, 18, .9); border: 1px solid rgba(140, 255, 90, .22); font-size: 11px; color: rgba(220, 255, 215, .75); text-align: center; }
+  #stats b { display: block; font-size: 16px; color: #fff; font-variant-numeric: tabular-nums; } #stats b em { font-style: normal; font-size: 11px; font-weight: 400; color: #a8ff5a; margin-left: 2px; }
+  #rdbar { height: 5px; margin-top: 3px; border-radius: 3px; background: rgba(255, 255, 255, .15); overflow: hidden; } #rdbar i { display: block; height: 100%; width: 0; background: #8cff5a; transition: width .25s; }
+  #acts { display: flex; gap: 6px; }
+  #acts button { flex: 1; padding: 8px 2px 7px; border-radius: 12px; border: 0; font: inherit; font-size: 15px; font-weight: 800; color: #06200a; background: #8cff5a; box-shadow: 0 4px 0 #3f8f22; cursor: pointer; line-height: 1.25; }
+  #acts button small { display: block; font-size: 10px; font-weight: 400; white-space: nowrap; letter-spacing: -.3px; } #acts button:active { transform: translateY(3px); box-shadow: 0 1px 0 #3f8f22; }
+  #acts button.off { background: #4a5a4a; color: #b8c8b8; box-shadow: 0 4px 0 #2a332a; }
+  #acts #bNext { flex: 1.25; background: #ffe27a; box-shadow: 0 4px 0 #b98a1c; color: #3a2800; }
+  #tile { position: absolute; left: 8px; right: 8px; bottom: 138px; display: none; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 14px; background: rgba(8, 14, 20, .94); border: 2px solid #8cff5a; box-shadow: 0 6px 18px rgba(0, 0, 0, .5); }
+  #tile .t { flex: 1; min-width: 0; } #tile h3 { margin: 0 0 2px; font-size: 16px; } #tile p { margin: 0; font-size: 12px; color: rgba(225, 245, 225, .82); line-height: 1.5; }
+  #tile button { padding: 10px 14px; border-radius: 12px; border: 0; font: inherit; font-size: 16px; font-weight: 900; color: #06200a; background: #8cff5a; box-shadow: 0 4px 0 #3f8f22; cursor: pointer; white-space: nowrap; }
+  #tile button small { display: block; font-size: 11px; font-weight: 400; } #tile button.off { background: #4a5a4a; color: #b8c8b8; box-shadow: 0 4px 0 #2a332a; }
+  #banner { position: absolute; top: 31%; left: 0; right: 0; text-align: center; font-size: 28px; font-weight: 900; letter-spacing: 2px; color: #eaffd0; pointer-events: none; z-index: 6; padding: 0 12px;
+    text-shadow: 0 0 18px rgba(110, 255, 60, .9), 0 3px 0 #0f3a0a, 0 5px 8px rgba(0, 0, 0, .6); }
+  #banner.bad { color: #ffd0c8; text-shadow: 0 0 18px rgba(255, 70, 50, .9), 0 3px 0 #4a0f0a, 0 5px 8px rgba(0, 0, 0, .6); }
+  #bubble { position: absolute; left: 50%; top: 104px; transform: translateX(-50%); padding: 7px 14px; border-radius: 14px; background: #fff; color: #10200c; font-size: 16px; font-weight: 800; opacity: 0; white-space: nowrap; box-shadow: 0 4px 10px rgba(0, 0, 0, .4); pointer-events: none; z-index: 5; }
+  #bubble.go { animation: pop 1.8s ease-out; }
+  @keyframes pop { 0% { opacity: 0; transform: translateX(-50%) scale(.4); } 12% { opacity: 1; transform: translateX(-50%) scale(1.15); } 22% { transform: translateX(-50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+  .float { position: absolute; font-size: 18px; font-weight: 900; color: #ffe27a; text-shadow: 0 2px 3px rgba(0, 0, 0, .8); pointer-events: none; transform: translate(-50%, -50%); animation: up 1s ease-out forwards; z-index: 4; white-space: nowrap; }
+  .float.bad { color: #ff8f84; } .float.g { color: #a8ff5a; }
+  @keyframes up { 0% { opacity: 0; margin-top: 6px; } 15% { opacity: 1; } 100% { opacity: 0; margin-top: -46px; } }
+  #event, #key { position: absolute; inset: 0; display: none; z-index: 10; }
+  #event { align-items: center; justify-content: center; background: rgba(2, 6, 4, .72); padding: 18px; box-sizing: border-box; }
+  #event .card { width: 100%; max-width: 340px; padding: 16px 16px 14px; border-radius: 18px; background: #f4fff0; color: #14240f; box-shadow: 0 0 0 3px #8cff5a, 0 16px 40px rgba(0, 0, 0, .6); }
+  #event h2 { margin: 0 0 6px; font-size: 22px; font-weight: 900; } #event h2 small { display: block; font-size: 12px; font-weight: 400; color: #5a7a50; margin-bottom: 2px; }
+  #event p { margin: 0 0 12px; font-size: 14px; line-height: 1.7; color: #2a3a24; }
+  #event button { display: block; width: 100%; margin-top: 8px; padding: 10px 12px; border-radius: 12px; border: 0; font: inherit; text-align: left; cursor: pointer; background: #1c3a14; color: #fff; font-size: 16px; font-weight: 800; box-shadow: 0 4px 0 #0a1c06; }
+  #event button small { display: block; font-size: 12px; font-weight: 400; color: #c8f0b8; margin-top: 2px; } #event button:active { transform: translateY(3px); box-shadow: 0 1px 0 #0a1c06; }
+  #event button.ok { text-align: center; background: #8cff5a; color: #06200a; box-shadow: 0 4px 0 #3f8f22; }
+  #key { cursor: pointer; }
+  #key h2 { position: absolute; top: 12%; left: 0; right: 0; margin: 0; text-align: center; font-size: 30px; font-weight: 900; letter-spacing: 3px; color: #eaffd0; text-shadow: 0 0 18px rgba(110, 255, 60, .9), 0 3px 0 #0f3a0a; }
+  #key h2 small { display: block; font-size: 14px; font-weight: 400; letter-spacing: 1px; margin-top: 6px; color: #fff; text-shadow: 0 2px 4px #000; }
+  #brag { position: absolute; top: 22%; left: 0; right: 0; text-align: center; font-size: 22px; font-weight: 900; color: #fff; text-shadow: 0 2px 6px #000; font-variant-numeric: tabular-nums; }
+  #meter { position: absolute; left: 22px; right: 22px; bottom: 150px; height: 34px; border-radius: 17px; overflow: hidden; background: #26303a; box-shadow: 0 0 0 3px #fff, 0 6px 16px rgba(0, 0, 0, .6); }
+  #meter i { position: absolute; top: 0; bottom: 0; } #meter .z1 { left: 0; background: #5a7a8a; } #meter .z2 { background: #5ad06a; } #meter .z3 { background: #ffd23a; } #meter .z4 { right: 0; background: #e0483c; }
+  #meter u { position: absolute; top: -4px; bottom: -4px; width: 6px; margin-left: -3px; background: #fff; border-radius: 3px; box-shadow: 0 0 8px #fff; }
+  #mlab { position: absolute; left: 22px; right: 22px; bottom: 124px; height: 18px; font-size: 12px; color: #fff; text-shadow: 0 1px 3px #000; } #mlab span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  #ktip { position: absolute; left: 0; right: 0; bottom: 78px; text-align: center; font-size: 18px; font-weight: 800; color: #ffe27a; text-shadow: 0 2px 6px #000; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .45; } }
+  #screen { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box; background: radial-gradient(ellipse at center, rgba(14, 40, 16, .5), rgba(2, 8, 4, .94)); z-index: 20; }
+  #screen h1 { font-weight: 900; font-size: 46px; letter-spacing: 4px; margin: 0 0 6px; color: #a8ff5a; text-shadow: 0 4px 0 #1f5a10, 0 0 26px rgba(110, 255, 60, .6), 0 8px 14px rgba(0, 0, 0, .5); }
+  #screen h1.red { color: #ffb0a0; text-shadow: 0 4px 0 #5a1810, 0 8px 14px rgba(0, 0, 0, .5); } #screen h1.gold { color: #ffe27a; text-shadow: 0 4px 0 #7a5a10, 0 0 26px rgba(255, 210, 60, .6); }
+  #screen .sub { font-size: 15px; color: rgba(235, 255, 230, .95); margin-bottom: 14px; line-height: 1.8; }
+  #screen .help { font-size: 13px; line-height: 2.0; color: rgba(235, 255, 230, .92); } #screen .help b { color: #ffe27a; }
+  #screen .go { margin-top: 22px; padding: 13px 44px; font-size: 20px; font-weight: 800; letter-spacing: 6px; cursor: pointer; border-radius: 14px; color: #06200a; background: #8cff5a; border: 0; box-shadow: 0 5px 0 #3f8f22, 0 10px 18px rgba(0, 0, 0, .4); font-family: inherit; }
+  #home { position: absolute; left: 12px; top: 12px; z-index: 30; display: flex; align-items: center; height: 44px; padding: 0 16px; border-radius: 12px; background: rgba(10, 30, 14, .88); border: 1px solid rgba(140, 255, 90, .5); color: #f2fff0; font-size: 14px; text-decoration: none; }
+  #screen[style*="display: none"] ~ #home { display: none; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "../vendor/three/build/three.module.js",
+  "three/addons/": "../vendor/three/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="stage">
+  <div id="hud">
+    <div id="top">
+      <span><small>季度</small><b id="qn">1 / 12</b></span>
+      <span><small>市值</small><b id="cap">0</b></span>
+      <span><small>现金</small><b id="cash">0</b></span>
+    </div>
+    <div id="rank"></div>
+    <div id="bubble"></div>
+    <div id="banner"></div>
+    <div id="tile"><div class="t"><h3 id="tName"></h3><p id="tInfo"></p></div><button id="tBtn"></button></div>
+    <div id="panel">
+      <div id="stats">
+        <div>芯片<b id="sGen"></b><div id="rdbar"><i></i></div></div>
+        <div>存货<b id="sStock"></b></div>
+        <div>人才<b id="sTal"></b></div>
+        <div>热度<b id="sHype"></b></div>
+      </div>
+      <div id="acts">
+        <button id="bRd">研发<small></small></button>
+        <button id="bCap">扩产<small></small></button>
+        <button id="bTal">挖人<small></small></button>
+        <button id="bNext">下一季度<small>结算收入</small></button>
+      </div>
+    </div>
+    <div id="event"><div class="card"><h2 id="eT"></h2><p id="eD"></p><div id="eB"></div></div></div>
+    <div id="key">
+      <h2 id="kT"></h2><div id="brag"></div>
+      <div id="meter"><i class="z1"></i><i class="z2"></i><i class="z3"></i><i class="z4"></i><u></u></div>
+      <div id="mlab"></div><div id="ktip">点一下，喊出参数</div>
+    </div>
+  </div>
+  <div id="screen"></div>
+  <a id="home" href="../">‹ 游戏厅</a>
+</div>
+<script type="module">import("./game.js?t=" + Date.now());</script>
+</body>
+</html>
