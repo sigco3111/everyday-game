@@ -1,14 +1,14 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>回声游戏厅 · 每天一个小游戏</title>
+<title>메아리 게임장 · 매일 미니게임 하나</title>
 <style>
   :root { --bg: #0A0E17; --panel: #111726; --line: #232B3D; --line2: #2A3449; --text: #E8EEF7; --text2: #C3CDDF; --mute: #9AA7BD; --accent: #7FE3FF; --gold: #FFD66E; --ok: #6FE0A0; }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; }
   a { color: var(--accent); } a:hover { color: #B8F0FF; }
   h1, h2, h3, p { margin: 0; }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -98,16 +98,16 @@
   <div class="wrap">
     <a class="logo" href="./">
       <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="4" fill="#7FE3FF"/><circle cx="15" cy="15" r="9" fill="none" stroke="#7FE3FF" stroke-width="2" opacity=".7"/><circle cx="15" cy="15" r="13.5" fill="none" stroke="#7FE3FF" stroke-width="1.5" opacity=".35"/></svg>
-      回声游戏厅
+      메아리 게임장
     </a>
-    <nav aria-label="主导航">
-      <a href="#today" class="on">今日</a><a href="#games">全部游戏</a><a href="#week">上新日历</a><a href="#me">我的记录</a>
+    <nav aria-label="주요 내비게이션">
+      <a href="#today" class="on">오늘</a><a href="#games">전체 게임</a><a href="#week">신작 캘린더</a><a href="#me">내 기록</a>
     </nav>
     <div class="tools">
       <label class="search">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9AA7BD" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.500-3.500"/></svg>
-        <span class="sr">搜索游戏</span>
-        <input id="q" type="search" placeholder="塔防、射击、解压" autocomplete="off">
+        <span class="sr">게임 검색</span>
+        <input id="q" type="search" placeholder="타워 디펜스, 슈팅, 스트레스 해소" autocomplete="off">
       </label>
       <div class="streak" id="streak"></div>
     </div>
@@ -115,30 +115,30 @@
 </header>
 
 <main class="wrap">
-  <section id="today" aria-label="今日游戏"></section>
+  <section id="today" aria-label="오늘의 게임"></section>
 
   <section id="week">
-    <div class="head"><h2>上新日历</h2><p class="hint">每天一个小游戏，玩过当天的就算打卡</p></div>
+    <div class="head"><h2>신작 캘린더</h2><p class="hint">매일 미니게임 하나, 당일 게임을 하면 체크인</p></div>
     <div class="days" id="days"></div>
   </section>
 
   <section id="games">
     <div class="bar">
-      <h2>全部游戏 <small id="count"></small></h2>
-      <div class="sort"><label for="sort">排序</label><select id="sort"><option value="new">最新上线</option><option value="recent">最近玩过</option><option value="short">时间最短</option></select></div>
+      <h2>전체 게임 <small id="count"></small></h2>
+      <div class="sort"><label for="sort">정렬</label><select id="sort"><option value="new">최신 공개순</option><option value="recent">최근 플레이순</option><option value="short">짧은 시간순</option></select></div>
     </div>
-    <div class="chips" id="chips" role="group" aria-label="筛选" style="margin-bottom: 20px"></div>
+    <div class="chips" id="chips" role="group" aria-label="필터" style="margin-bottom: 20px"></div>
     <div class="grid" id="grid"></div>
   </section>
 
   <section id="me">
-    <div class="head"><h2>我的记录</h2></div>
+    <div class="head"><h2>내 기록</h2></div>
     <div class="stats" id="stats"></div>
-    <p class="hint" style="font-size: 13px">记录保存在这台设备的浏览器里，不需要登录。</p>
+    <p class="hint" style="font-size: 13px">기록은 이 기기의 브라우저에만 저장되며 로그인이 필요 없습니다.</p>
   </section>
 </main>
 
-<footer><div class="wrap"><span>回声游戏厅 · 每天一个小游戏</span><span>电脑、平板、手机打开都能玩</span></div></footer>
+<footer><div class="wrap"><span>메아리 게임장 · 매일 미니게임 하나</span><span>PC, 태블릿, 스마트폰에서 바로 플레이</span></div></footer>
 <script type="module" src="hub.js"></script>
 </body>
 </html>
