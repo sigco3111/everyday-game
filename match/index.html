@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>回声 · 相亲角速配</title>
+<title>메아리 · 맞선 코너 스피드 매칭</title>
 <style>
   html, body { margin: 0; height: 100%; background: #05070c; overflow: hidden; touch-action: none;
-    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #fffaf0; user-select: none; -webkit-user-select: none; }
+    font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; color: #fffaf0; user-select: none; -webkit-user-select: none; }
   #stage { position: relative; height: 100%; margin: 0 auto; overflow: hidden; background: #8fc9a0; }
   canvas.bg { display: block; position: absolute; inset: 0; }
   #hud, #screen, #hurt { position: absolute; inset: 0; }
@@ -62,27 +62,27 @@
 <div id="stage">
   <div id="hud">
     <div id="top">
-      <span><small>得分</small><b id="score">0</b></span>
-      <span><small>委托人</small><b id="auntN">第 1 位</b></span>
-      <span><small>大妈的耐心</small><b id="lives"></b></span>
+      <span><small>점수</small><b id="score">0</b></span>
+      <span><small>의뢰인</small><b id="auntN">1 번째</b></span>
+      <span><small>아주머니의 인내심</small><b id="lives"></b></span>
     </div>
     <div id="want"><h3><span id="who"></span><em id="leftN"></em></h3><div id="reqs"></div></div>
     <div id="deck">
       <div id="tbar"><i></i></div>
       <div id="card">
-        <span class="stamp no">不合适</span><span class="stamp yes">合适</span>
+        <span class="stamp no">부적합</span><span class="stamp yes">적합</span>
         <div class="head"><canvas id="face" width="152" height="152"></canvas><div><h2 id="cname"></h2><div class="job" id="cjob"></div></div></div>
         <ul id="attrs"></ul>
       </div>
     </div>
     <div id="combo"></div>
-    <div id="btns"><button id="bNo">不合适</button><button id="bYes">合适</button></div>
+    <div id="btns"><button id="bNo">부적합</button><button id="bYes">적합</button></div>
     <div id="bubble"></div>
     <div id="banner"></div>
   </div>
   <div id="hurt"></div>
   <div id="screen"></div>
-  <a id="home" href="../">‹ 游戏厅</a>
+  <a id="home" href="../">‹ 게임장</a>
 </div>
 <script type="module">import("./game.js?t=" + Date.now());</script>
 </body>
