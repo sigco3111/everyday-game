@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>回声 · 怒砸办公室</title>
+<title>메아리 · 사무실 박살 내기</title>
 <style>
   html, body { margin: 0; height: 100%; background: #05070c; overflow: hidden; touch-action: none;
-    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #fffaf0; user-select: none; -webkit-user-select: none; }
+    font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; color: #fffaf0; user-select: none; -webkit-user-select: none; }
   #stage { position: relative; height: 100%; margin: 0 auto; overflow: hidden; background: #2a2f3a; cursor: crosshair; }
   canvas { display: block; }
   #hud, #screen, #hurt, #foam { position: absolute; inset: 0; pointer-events: none; }
@@ -53,9 +53,9 @@
 <div id="stage">
   <div id="hud">
     <div id="top">
-      <span><small>造成损失</small><b id="money">0</b></span>
-      <span><small>正在砸</small><b id="clock" style="font-size:17px;line-height:28px;white-space:nowrap">工位</b></span>
-      <span><small>连砸</small><b id="bad"></b></span>
+      <span><small>누적 손실</small><b id="money">0</b></span>
+      <span><small>부수는 중</small><b id="clock" style="font-size:17px;line-height:28px;white-space:nowrap">자리</b></span>
+      <span><small>연속</small><b id="bad"></b></span>
     </div>
     <div class="bar" id="tbar"><i></i><em id="ttxt"></em></div>
     <div class="bar" id="rbar" style="top:92px"><i style="background:#ff5a3c"></i><em id="rtxt"></em></div>
@@ -68,7 +68,7 @@
   <div id="foam"></div>
   <div id="hurt"></div>
   <div id="screen"></div>
-  <a id="home" href="../">‹ 游戏厅</a>
+  <a id="home" href="../">‹ 게임장</a>
 </div>
 <script type="module">import("./game.js?t=" + Date.now());</script>
 </body>
