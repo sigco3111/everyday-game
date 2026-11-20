@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>回声 · 骑手</title>
+<title>메아리 · 배달 라이더</title>
 <style>
   html, body { margin: 0; height: 100%; background: #05070c; overflow: hidden; touch-action: none;
-    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #f2f6fa; user-select: none; -webkit-user-select: none; }
+    font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; color: #f2f6fa; user-select: none; -webkit-user-select: none; }
   #stage { position: absolute; inset: 0; overflow: hidden; }
   canvas { display: block; }
   #hud, #screen { position: absolute; inset: 0; }
@@ -66,9 +66,9 @@
 <div id="stage">
   <div id="hud">
     <div id="mini" class="panel"><canvas id="map" width="360" height="360"></canvas></div>
-    <div id="topbar" class="panel"><span><b id="clock">10:30</b> <span id="wx">晴</span></span><span>今日 <b id="money">¥0</b></span><span>服务分 <b id="rating">90</b></span><span class="hideS">完成 <b id="done">0</b> 单</span><span>心情 <b id="mood">🙂 70</b><i id="moodD"></i></span></div>
-    <div id="phone" class="panel"><h4>回声外卖 · 骑手端 <span id="lvl"></span></h4><div id="orders"></div>
-      <div id="offer"><div id="oText"></div><div class="bar"><i id="oBar"></i></div><div class="row"><button id="oNo">拒单 N</button><button id="oYes">接单 Y</button></div></div></div>
+    <div id="topbar" class="panel"><span><b id="clock">10:30</b> <span id="wx">맑음</span></span><span>오늘 <b id="money">₩0</b></span><span>서비스 점수 <b id="rating">90</b></span><span class="hideS">완료 <b id="done">0</b> 건</span><span>기분 <b id="mood">🙂 70</b><i id="moodD"></i></span></div>
+    <div id="phone" class="panel"><h4>메아리 배달 · 라이더앱 <span id="lvl"></span></h4><div id="orders"></div>
+      <div id="offer"><div id="oText"></div><div class="bar"><i id="oBar"></i></div><div class="row"><button id="oNo">거절 N</button><button id="oYes">수락 Y</button></div></div></div>
     <div id="nav" class="panel"><span id="navA"><svg viewBox="0 0 24 24" fill="#241703"><path d="M12 2l8 18-8-4.500L4 20z"/></svg></span><span><b id="navT"></b><small id="navS"></small></span></div>
     <div id="pin"></div>
     <div id="cta" class="panel"></div>
@@ -76,12 +76,12 @@
     <div id="toasts"></div>
     <div id="banner"></div>
     <div id="prog" class="panel"><span id="progT"></span><div class="bar"><i id="progB"></i></div></div>
-    <div id="speed" class="panel"><span id="lim">30</span><b id="kmh">0</b> km/h<i id="batt">电量 100%</i></div>
-    <div id="hint" class="panel">W 加速　S 刹车　A D 转向　Y 接单　N 拒单　Tab 切换目标　M 静音</div>
-    <div id="touch"><button id="tBrake">刹车</button><button id="tGo">加速</button></div>
+    <div id="speed" class="panel"><span id="lim">30</span><b id="kmh">0</b> km/h<i id="batt">배터리 100%</i></div>
+    <div id="hint" class="panel">W 가속　S 브레이크　A D 조향　Y 수락　N 거절　Tab 목표 전환　M 음소거</div>
+    <div id="touch"><button id="tBrake">브레이크</button><button id="tGo">가속</button></div>
   </div>
   <div id="screen"></div>
-  <a id="home" href="../">‹ 游戏厅</a>
+  <a id="home" href="../">‹ 게임장</a>
 </div>
 <script type="module">import("./game.js?t=" + Date.now());</script>
 </body>
