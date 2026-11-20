@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>回声 · 广州漂移</title>
+<title>메아리 · 광저우 드리프트</title>
 <style>
   html, body { margin: 0; height: 100%; background: #04050a; overflow: hidden; touch-action: none;
-    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #f2f6fa; user-select: none; -webkit-user-select: none; }
+    font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; color: #f2f6fa; user-select: none; -webkit-user-select: none; }
   #stage { position: absolute; inset: 0; overflow: hidden; }
   canvas { display: block; }
   #hud, #screen { position: absolute; inset: 0; }
@@ -64,20 +64,20 @@
 <body>
 <div id="stage">
   <div id="hud">
-    <div id="order" class="panel"><span id="oDist"></span><div id="oTag">取餐</div><div id="oName"></div><div id="oItem"></div><div id="oBar"><i></i></div></div>
+    <div id="order" class="panel"><span id="oDist"></span><div id="oTag">픽업</div><div id="oName"></div><div id="oItem"></div><div id="oBar"><i></i></div></div>
     <div id="timer">0.0</div><div id="tadd"></div>
-    <div id="right"><div id="money">¥0</div><div id="cnt">已送 0 单</div><div id="food">餐品完好<span><i id="foodB"></i></span></div><canvas id="mini" width="224" height="200"></canvas></div>
-    <div id="drift"><div id="dTag">漂 移</div><span id="dPts">0</span><span id="dMul"></span></div>
+    <div id="right"><div id="money">₩0</div><div id="cnt">배달 0 건</div><div id="food">음식 온전함<span><i id="foodB"></i></span></div><canvas id="mini" width="224" height="200"></canvas></div>
+    <div id="drift"><div id="dTag">드리프트</div><span id="dPts">0</span><span id="dMul"></span></div>
     <div id="zone"></div>
     <div id="toasts"></div>
     <div id="count"></div>
     <div id="speed"><span id="kmh">0</span><small>km/h</small><div id="charge"><i></i></div></div>
-    <div id="hint" class="panel">A D 转向　空格 按住漂移，松开喷射　S 刹车　M 静音</div>
-    <div id="steerTip">← 左半屏左右滑动转向 →</div>
-    <div id="touch"><button id="tBrake">刹车</button><button id="tDrift">漂移</button></div>
+    <div id="hint" class="panel">A D 조향　스페이스 누르면 드리프트, 놓으면 부스트　S 브레이크　M 음소거</div>
+    <div id="steerTip">← 왼쪽 절반을 좌우로 밀어 조향 →</div>
+    <div id="touch"><button id="tBrake">브레이크</button><button id="tDrift">드리프트</button></div>
   </div>
   <div id="screen"></div>
-  <a id="home" href="../">‹ 游戏厅</a>
+  <a id="home" href="../">‹ 게임장</a>
 </div>
 <script type="module">import("./game.js?t=" + Date.now());</script>
 </body>
