@@ -116,7 +116,7 @@ const sfx = {
 // 한국어 문구 -> 원본 음성 라인(중국어) 대응표. 음성 파일은 원본 유지, 문구만 이 표로 연결.
 const VOICE = { '열심히 해': '好好干', '깜짝이야': '吓死我了', '누가 딴짓이야': '谁在摸鱼', '월급 깎는다': '扣工资', '근무 시간에 뭐 하는 거야': '上班时间干嘛呢', '넌 해고야': '你被开除了', 'CCTV 달았다': '装了摄像头', '순찰 조심해': '小心巡查', '딴짓 최고': '摸鱼真爽', '퇴근이다': '下班啦', '숏폼 보기': '刷短视频', '버블티 마시기': '喝奶茶', '과자 먹기': '吃零食', '인터넷 쇼핑': '网购', '소설 읽기': '看小说', '매니큐어': '修指甲', '수다 떨기': '聊八卦', '드라마 정주행': '追剧', '주식': '炒股', '뜨개질': '织毛衣', '게임': '打游戏', '카드게임': '斗地主', '고양이 쓰다듬기': '撸猫', '마스크팩': '敷面膜', '푹 자기': '睡大觉', '유급 화장실': '带薪拉屎', '족욕': '泡个脚', '훠궈 끓이기': '煮火锅' };
 const clips = {}, saidLog = [], sayLast = {}; let sayTok = 0, clipSrc = null, sayUntil = 0, sayPri = 0;
-fetch('voice/index.json').then((r) => r.json()).then((idx) => { for (const t in idx) clips[t] = { dur: idx[t].dur, raw: fetch('voice/' + idx[t].id + '.mp3').then((r) => r.arrayBuffer()) }; }).catch(() => {});
+/* 음성 비활성화(사용자 선택): 원본 중국어 음성 클립을 불러오지 않음 */ false && fetch('voice/index.json').then((r) => r.json()).then((idx) => { for (const t in idx) clips[t] = { dur: idx[t].dur, raw: fetch('voice/' + idx[t].id + '.mp3').then((r) => r.arrayBuffer()) }; }).catch(() => {});
 function say(text, pri = 1, gap = 0) {
   const c = clips[VOICE[text] || text], now = performance.now(); bubble(text);
   if (!c || (gap && now - (sayLast[text] || 0) < gap) || (now < sayUntil && pri <= sayPri)) return;
