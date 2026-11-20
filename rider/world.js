@@ -1,4 +1,4 @@
-// 《回声：骑手》的世界：一片 5×5 街区的老城，带昼夜和天气。地面、楼的窗户、天空全在着色器里现算，没有任何图片素材。
+// 《메아리: 라이더》의 세계: 5×5 블록의 구도심, 낮밤과 날씨 포함. 바닥, 건물 창문, 하늘을 모두 셰이더에서 실시간으로 계산해 이미지 에셋이 전혀 없다.
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -6,14 +6,14 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-// ---------- 街区尺寸（米） ----------
-// 路的中线在 c(i) = -HALF + i * P，i = 0..NB；路面半宽 5（双向各一条车道），两边各 3 米人行道，再往里是街区
+// ---------- 블록 크기(미터) ----------
+// 도로 중심선은 c(i) = -HALF + i * P, i = 0..NB; 노면 반폭 5(양방향 각 한 차선), 양쪽에 3m 인도, 그 안쪽이 블록
 export const P = 72, NB = 5, HALF = P * NB / 2, ROAD = 5, WALK = 8;
 export const c = (i) => -HALF + i * P;
 export const WEATHER = {
-  clear: { name: '晴', cover: 0.12, fog: 0.0016, wet: 0, rain: 0 }, cloudy: { name: '多云', cover: 0.62, fog: 0.0024, wet: 0, rain: 0 },
-  drizzle: { name: '小雨', cover: 0.9, fog: 0.0045, wet: 0.7, rain: 0.45 }, storm: { name: '暴雨', cover: 1, fog: 0.0075, wet: 1, rain: 1 },
-  fog: { name: '大雾', cover: 0.75, fog: 0.019, wet: 0.3, rain: 0 },
+  clear: { name: '맑음', cover: 0.12, fog: 0.0016, wet: 0, rain: 0 }, cloudy: { name: '흐림', cover: 0.62, fog: 0.0024, wet: 0, rain: 0 },
+  drizzle: { name: '이슬비', cover: 0.9, fog: 0.0045, wet: 0.7, rain: 0.45 }, storm: { name: '폭우', cover: 1, fog: 0.0075, wet: 1, rain: 1 },
+  fog: { name: '짙은 안개', cover: 0.75, fog: 0.019, wet: 0.3, rain: 0 },
 };
 function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const NOISE = `
@@ -27,13 +27,13 @@ export function createWorld(stage) {
   stage.insertBefore(renderer.domElement, stage.firstChild);
   const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(58, 1.6, 0.3, 1400); camera.layers.enable(2);
   const R = rng(20261116), rr = (a, b) => a + R() * (b - a), pick = (a) => a[Math.floor(R() * a.length)];
-  const U = {                                                       // 所有着色器共用的环境量，每帧更新一次
+  const U = {                                                       // 모든 셰이더가 공유하는 환경 값, 매 프레임 한 번 갱신
     uTime: { value: 0 }, uWet: { value: 0 }, uRain: { value: 0 }, uNight: { value: 0 }, uSunDir: { value: new THREE.Vector3(0.3, 0.8, 0.5) }, uSunCol: { value: new THREE.Color(1, 1, 1) },
     uAmb: { value: new THREE.Color(0.4, 0.45, 0.5) }, uFogCol: { value: new THREE.Color(0.6, 0.7, 0.8) }, uFogDen: { value: 0.002 }, uZen: { value: new THREE.Color() }, uHor: { value: new THREE.Color() }, uCover: { value: 0.2 },
     tRefl: { value: null }, uReflVP: { value: new THREE.Matrix4() }, uHead: { value: new THREE.Vector4(0, 0, 0, 1) }, uHeadK: { value: 0 }, uFlash: { value: 0 },
   };
 
-  // ---------- 天空 ----------
+  // ---------- 하늘 ----------
   const skyMat = new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, uniforms: U,
     vertexShader: 'varying vec3 vD; void main(){ vD = position; vec4 p = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * p; gl_Position.z = gl_Position.w; }',
     fragmentShader: `uniform vec3 uZen, uHor, uSunDir, uSunCol; uniform float uCover, uTime, uNight, uFlash; varying vec3 vD; ${NOISE}
@@ -41,13 +41,13 @@ export function createWorld(stage) {
         vec3 d = normalize(vD); float up = max(d.y, 0.0);
         vec3 col = mix(uHor, uZen, pow(up, 0.55));
         float sd = max(dot(d, uSunDir), 0.0);
-        col += uSunCol * (pow(sd, 900.0) * 30.0 + pow(sd, 12.0) * 0.35 + pow(sd, 3.0) * 0.12) * (1.0 - uCover * 0.92);            // 日面和光晕
+        col += uSunCol * (pow(sd, 900.0) * 30.0 + pow(sd, 12.0) * 0.35 + pow(sd, 3.0) * 0.12) * (1.0 - uCover * 0.92);            // 태양과 빛무리
         vec2 cp = d.xz / (up + 0.12) * 1.3 + uTime * 0.006;
-        float cl = fbm(cp) * 0.65 + fbm(cp * 2.7 + 9.0) * 0.35; float cm = smoothstep(0.62 - uCover * 0.5, 0.86 - uCover * 0.42, cl);                // 云
+        float cl = fbm(cp) * 0.65 + fbm(cp * 2.7 + 9.0) * 0.35; float cm = smoothstep(0.62 - uCover * 0.5, 0.86 - uCover * 0.42, cl);                // 구름
         vec3 cc = mix(uHor * 1.15 + uSunCol * 0.25 * pow(sd, 2.0), uZen * 0.55 + uHor * 0.25, smoothstep(0.3, 1.0, cl)) * (1.0 - uCover * 0.45);
         col = mix(col, cc + uFlash * vec3(0.9, 0.95, 1.2) * cl, cm * smoothstep(0.0, 0.12, up));
-        float st = step(0.9985, h21(floor(d.xz / (up + 0.2) * 220.0))) * uNight * (1.0 - cm) * smoothstep(0.05, 0.4, up); col += vec3(st);     // 星星
-        col = mix(col, uHor, pow(1.0 - up, 9.0));                                                                                                     // 地平线的霾
+        float st = step(0.9985, h21(floor(d.xz / (up + 0.2) * 220.0))) * uNight * (1.0 - cm) * smoothstep(0.05, 0.4, up); col += vec3(st);     // 별
+        col = mix(col, uHor, pow(1.0 - up, 9.0));                                                                                                     // 지평선의 아지랑이
         if (d.y < 0.0) col = mix(uHor, uHor * 0.5, min(1.0, -d.y * 4.0));
         gl_FragColor = vec4(col, 1.0);
       }` });
@@ -56,38 +56,38 @@ export function createWorld(stage) {
   const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1); scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffffff, 2); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 420 }); sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.06; scene.add(sun, sun.target);
 
-  // ---------- 地面：沥青、标线、斑马线、人行道砖、积水和倒影，全在一个着色器里 ----------
+  // ---------- 바닥: 아스팔트, 차선, 횡단보도, 인도 블록, 물웅덩이와 반사까지 전부 하나의 셰이더에서 ----------
   const groundMat = new THREE.ShaderMaterial({ uniforms: U, fog: false,
     vertexShader: 'varying vec3 vW; varying vec4 vR; uniform mat4 uReflVP; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; vR = uReflVP * w; gl_Position = projectionMatrix * viewMatrix * w; }',
     fragmentShader: `uniform sampler2D tRefl; uniform vec3 uSunDir, uSunCol, uAmb, uFogCol; uniform float uTime, uWet, uRain, uNight, uFogDen, uHeadK; uniform vec4 uHead; varying vec3 vW; varying vec4 vR; ${NOISE}
       const float P = ${P}.0, HALF = ${HALF}.0;
-      float ring(vec2 p, float t) {                                    // 雨点砸在水面上的一圈圈涟漪
+      float ring(vec2 p, float t) {                                    // 빗방울이 수면에 만드는 동그란 파문
         vec2 g = floor(p), f = fract(p) - 0.5; float h = h21(g), ph = fract(t * (0.7 + h * 0.6) + h * 7.0), r = ph * 0.48;
         vec2 o = (vec2(h21(g + 3.1), h21(g + 7.7)) - 0.5) * 0.4; float d = length(f - o); return sin((d - r) * 60.0) * smoothstep(0.06, 0.0, abs(d - r)) * (1.0 - ph);
       }
       void main(){
-        vec2 p = vW.xz; vec2 q = mod(p + HALF, P); vec2 d = min(q, P - q);                                         // d：到最近一条竖路 / 横路中线的距离
+        vec2 p = vW.xz; vec2 q = mod(p + HALF, P); vec2 d = min(q, P - q);                                         // d: 가장 가까운 세로 도로 / 가로 도로 중심선까지의 거리
         float inMap = step(abs(p.x), HALF + 8.5) * step(abs(p.y), HALF + 8.5);
         float rx = step(d.x, ${ROAD}.0), rz = step(d.y, ${ROAD}.0), road = max(rx, rz) * inMap, cross = rx * rz;
         float walk = (max(step(d.x, ${WALK}.0), step(d.y, ${WALK}.0)) - max(rx, rz)) * inMap;
         float n1 = fbm(p * 0.35), n2 = vn(p * 9.0), n3 = fbm(p * 0.045 + 3.0);
-        // 沥青：深浅不匀，车轮常压的地方更亮更光
+        // 아스팔트: 명암이 고르지 않고, 바퀴가 자주 지나는 자리가 더 밝고 반짝임
         vec3 alb = vec3(0.058, 0.06, 0.066) * (0.75 + 0.5 * n1) + vec3(0.02) * n2;
-        float lane = mix(d.x, d.y, rz * (1.0 - rx));                                                                 // 在路上时，离这条路中线多远
+        float lane = mix(d.x, d.y, rz * (1.0 - rx));                                                                 // 도로 위일 때 이 도로 중심선까지의 거리
         alb *= 1.0 + 0.25 * exp(-pow((lane - 2.6) * 1.1, 2.0));
         float along = mix(p.y, p.x, rz * (1.0 - rx)), wear = 0.55 + 0.45 * vn(p * 1.7);
-        float mid = smoothstep(0.16, 0.1, abs(lane - 0.22)) + smoothstep(0.16, 0.1, lane) * 0.0;                       // 双黄线
+        float mid = smoothstep(0.16, 0.1, abs(lane - 0.22)) + smoothstep(0.16, 0.1, lane) * 0.0;                       // 이중 황색 실선
         float edge = smoothstep(0.09, 0.05, abs(lane - 4.55));
-        float nearX = step(d.y, ${WALK}.0 + 4.0), nearZ = step(d.x, ${WALK}.0 + 4.0);                                 // 接近路口
+        float nearX = step(d.y, ${WALK}.0 + 4.0), nearZ = step(d.x, ${WALK}.0 + 4.0);                                 // 교차로 접근
         float nearI = mix(nearX, nearZ, rz * (1.0 - rx));
         vec3 paint = vec3(0.0);
         paint += vec3(0.75, 0.6, 0.12) * mid * (1.0 - nearI) * wear; paint += vec3(0.7) * edge * (1.0 - nearI) * wear;
-        float zd = mix(d.y, d.x, rz * (1.0 - rx));                                                                     // 斑马线和停车线：路口外沿
+        float zd = mix(d.y, d.x, rz * (1.0 - rx));                                                                     // 횡단보도와 정지선: 교차로 바깥 가장자리
         float zebra = step(${ROAD}.0 + 1.0, zd) * step(zd, ${ROAD}.0 + 4.0) * step(fract((mix(p.x, p.y, rz * (1.0 - rx))) * 0.85), 0.5) * (1.0 - cross);
         float stopl = smoothstep(0.22, 0.15, abs(zd - (${ROAD}.0 + 5.2))) * step(0.3, lane) * (1.0 - cross);
         paint += vec3(0.72) * (zebra + stopl) * wear;
         vec3 col = mix(alb, paint, clamp(max(max(paint.r, paint.g), paint.b) * 1.6, 0.0, 1.0)) ; col = mix(alb, col, road);
-        // 人行道砖和街区里的地砖
+        // 인도 보도블록과 블록 안의 바닥 타일
         vec2 tg = abs(fract(p / 0.6) - 0.5); float tl = smoothstep(0.47, 0.5, max(tg.x, tg.y));
         vec3 walkC = vec3(0.21, 0.2, 0.19) * (0.8 + 0.4 * h21(floor(p / 0.6))) * (1.0 - tl * 0.45);
         float curb = smoothstep(0.25, 0.0, abs(min(d.x, d.y) - ${ROAD}.0 - 0.12)) ; walkC = mix(walkC, vec3(0.32), curb * 0.8);
@@ -95,7 +95,7 @@ export function createWorld(stage) {
         vec3 plaza = vec3(0.15, 0.15, 0.155) * (0.8 + 0.4 * n1) * (1.0 - pl * 0.4);
         vec3 outside = vec3(0.05, 0.07, 0.045) * (0.7 + 0.6 * n1);
         col = mix(mix(plaza, outside, 1.0 - inMap), walkC, walk); col = mix(col, mix(alb, mix(alb, paint, clamp(max(max(paint.r, paint.g), paint.b) * 1.6, 0.0, 1.0)), 1.0), road);
-        // 湿：低洼处积水成镜面，其余是潮的。路面比人行道更容易积水
+        // 젖음: 웅덩이는 거울처럼 고이고 나머지는 축축함. 노면이 인도보다 물이 더 잘 고임
         float low = smoothstep(0.42, 0.62, n3 * 0.7 + n1 * 0.3 + road * 0.07 - walk * 0.05);
         float puddle = low * smoothstep(0.25, 0.9, uWet) * inMap, damp = uWet;
         col *= mix(1.0, 0.55, damp); col = mix(col, col * 0.5, puddle);
@@ -103,7 +103,7 @@ export function createWorld(stage) {
         vec3 N = normalize(vec3((vn(p * 14.0) - 0.5) * 0.25 * (1.0 - puddle), 1.0, (vn(p * 14.0 + 5.0) - 0.5) * 0.25 * (1.0 - puddle)));
         if (uRain > 0.01) { float rp = (ring(p * 1.6, uTime) + ring(p * 2.3 + 4.0, uTime * 1.3)) * uRain * (0.25 + 0.75 * puddle); N = normalize(N + vec3(rp, 0.0, rp) * 0.5); }
         vec3 V = normalize(cameraPosition - vW); float dist = length(cameraPosition - vW);
-        // 光：天光 + 太阳 + 夜里一盏盏路灯在地上的光斑 + 车头灯
+        // 빛: 하늘빛 + 태양 + 밤의 가로등이 바닥에 만드는 빛점 + 헤드라이트
         vec3 light = uAmb + uSunCol * max(dot(N, uSunDir), 0.0);
         vec2 lv = vec2(${ROAD}.0 + 1.6 - d.x, mod(p.y, 24.0) - 12.0), lh = vec2(mod(p.x, 24.0) - 12.0, ${ROAD}.0 + 1.6 - d.y);
         float pool = exp(-dot(lv, lv) / 55.0) * step(d.x, 14.0) + exp(-dot(lh, lh) / 55.0) * step(d.y, 14.0);
@@ -112,7 +112,7 @@ export function createWorld(stage) {
         light += vec3(0.9, 0.95, 1.0) * uHeadK * smoothstep(0.86, 0.985, hc) * exp(-hl / 16.0) * 2.6;
         vec3 outc = col * light;
         vec3 Hh = normalize(V + uSunDir); outc += uSunCol * pow(max(dot(N, Hh), 0.0), mix(12.0, 600.0, 1.0 - rough)) * (1.0 - rough) * 0.9;
-        // 倒影：积水里是清晰的镜像，潮湿的路面是竖向拉长、糊掉的反光
+        // 반사: 물웅덩이는 선명한 거울상, 축축한 노면은 세로로 길게 번진 반사광
         vec2 ruv = vR.xy / vR.w * 0.5 + 0.5 + N.xz * 0.045;
         float blur = rough * 0.05 * (1.0 + 26.0 / (dist + 8.0));
         vec3 refl = texture2D(tRefl, ruv).rgb * 0.4;
@@ -126,7 +126,7 @@ export function createWorld(stage) {
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(1800, 1800).rotateX(-Math.PI / 2), groundMat); ground.layers.set(2); scene.add(ground);
   const shadowCatcher = new THREE.Mesh(new THREE.PlaneGeometry(700, 700).rotateX(-Math.PI / 2), new THREE.ShadowMaterial({ opacity: 0.5 })); shadowCatcher.position.y = 0.02; shadowCatcher.receiveShadow = true; shadowCatcher.layers.set(2); scene.add(shadowCatcher);
 
-  // ---------- 楼：一个实例化的方块，窗户在着色器里画。夜里按概率亮灯 ----------
+  // ---------- 건물: 인스턴싱된 상자 하나, 창문은 셰이더에서 그림. 밤엔 확률로 불이 켜짐 ----------
   const bldMat = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 });
   bldMat.onBeforeCompile = (sh) => {
     sh.uniforms.uNight = U.uNight; sh.uniforms.uTime = U.uTime;
@@ -148,14 +148,14 @@ export function createWorld(stage) {
         vec3 wcol = mix(vec3(1.0, 0.72, 0.38), vec3(0.75, 0.9, 1.0), step(0.72, bh(wi + 9.0))) * (0.5 + 0.7 * bh(wi + 3.0));
         float curtain = 0.55 + 0.45 * step(wf.y, 0.4 + 0.4 * bh(wi + 5.0));
         totalEmissiveRadiance += wcol * lit * curtain * uNight * 0.55;
-        float shelf = 0.55 + 0.45 * step(0.5, fract(fv * 1.3)) * step(0.3, fract(fu * 0.9));                         // 店里的货架和灯箱，不是一整块白
+        float shelf = 0.55 + 0.45 * step(0.5, fract(fv * 1.3)) * step(0.3, fract(fu * 0.9));                         // 가게 안 선반과 조명 간판, 통짜 흰색이 아님
         vec3 scol = mix(vec3(1.0, 0.8, 0.55), vec3(0.7, 0.9, 1.0), step(0.6, bh(floor(vec2(fu / 4.2, 2.0)) + floor(vWp.xz * 0.02))));
         totalEmissiveRadiance += scol * glassS * (0.04 + 0.5 * uNight) * shelf * (0.3 + 0.7 * bh(floor(vec2(fu / 4.2, 1.0)) + floor(vWp.xz * 0.02)));`);
   };
   const blds = [], signs = [], shops = [], homes = [], solids = [];
-  const SHOP_NAMES = ['桂香螺蛳粉', '阿婆老友粉', '深夜烧烤档', '茶里茶气', '一口炸鸡', '暖心粥铺', '麻辣烫大王', '大碗面馆', '川味小炒', '鲜果切', '汉堡工坊', '东北饺子馆', '角落咖啡', '砂锅米线', '卤味研究所', '轻食沙拉'];
+  const SHOP_NAMES = ['김밥천국', '할매 순대국', '심야 포차', '카페 온기', '한입 치킨', '따뜻한 죽집', '마라탕 대왕', '큰그릇 국수', '사천 볶음', '생과일 컷', '버거 공방', '만두 이야기', '골목 커피', '뚝배기 쌀국수', '족발 연구소', '샐러드 한끼'];
   const SIGN_COL = ['#ff3b5c', '#ffb02e', '#35e0a0', '#4ac8ff', '#ff7ae0', '#fff06a', '#ff6a3c', '#9a8cff'];
-  const HOME_A = ['锦绣花园', '阳光小区', '江畔名苑', '学府新村', '幸福里', '梧桐公馆', '城南旧事', '翠湖居'], HOME_B = ['创业大厦', '环球中心', '人民医院', '市一中', '软件园', '电视台', '体育馆', '青年公寓'];
+  const HOME_A = ['금호 타운', '햇살 아파트', '강변 파크', '학정 마을', '행복 주택', '버들 공관', '남쪽 이야기', '청호 자이'], HOME_B = ['창업 센터', '월드 타워', '시립 병원', '제일중학교', '테크 밸리', '방송국', '체육관', '청년 레지던스'];
   const WALLS = [[0.42, 0.36, 0.3], [0.3, 0.33, 0.38], [0.5, 0.42, 0.3], [0.24, 0.27, 0.33], [0.44, 0.3, 0.24], [0.52, 0.5, 0.46], [0.22, 0.27, 0.28], [0.4, 0.34, 0.4], [0.55, 0.35, 0.28], [0.3, 0.38, 0.36]];
   let shopI = 0;
   for (let bi = 0; bi < NB; bi++) for (let bj = 0; bj < NB; bj++) {
@@ -164,13 +164,13 @@ export function createWorld(stage) {
     for (let li = 0; li < 2; li++) for (let lj = 0; lj < 2; lj++) {
       const w = rr(21, 25), d = rr(21, 25), h = R() < 0.22 + central * 0.25 ? rr(34, 60 + central * 30) : rr(11, 27), cx = x0 + (li ? B - w / 2 - 0.4 : w / 2 + 0.4), cz = z0 + (lj ? B - d / 2 - 0.4 : d / 2 + 0.4);
       blds.push({ x: cx, z: cz, w, d, h, col: pick(WALLS) });
-      const faceX = R() < 0.5, nx = faceX ? (li ? 1 : -1) : 0, nz = faceX ? 0 : (lj ? 1 : -1), fx = cx + nx * w / 2, fz = cz + nz * d / 2;      // 朝街的那面墙
+      const faceX = R() < 0.5, nx = faceX ? (li ? 1 : -1) : 0, nz = faceX ? 0 : (lj ? 1 : -1), fx = cx + nx * w / 2, fz = cz + nz * d / 2;      // 길을 향한 벽면
       const door = { x: nx ? (li ? c(bi + 1) - 6.4 : c(bi) + 6.4) : cx, z: nz ? (lj ? c(bj + 1) - 6.4 : c(bj) + 6.4) : cz, nx, nz };
-      if (R() < 0.62 && shopI < 40) { const k = shopI++ % SHOP_NAMES.length; signs.push({ x: fx + nx * 0.2, z: fz + nz * 0.2, nx, nz, k, w: Math.min(11, (nx ? d : w) * 0.6) }); shops.push({ name: SHOP_NAMES[k] + (shopI > 16 ? '（' + '二三四五'[Math.floor((shopI - 1) / 16) - 1] + '店）' : ''), ...door }); }
-      else homes.push({ name: (h > 30 ? pick(HOME_B) : pick(HOME_A) + ' ' + (1 + Math.floor(R() * 12)) + ' 栋'), tall: h > 30, ...door });
+      if (R() < 0.62 && shopI < 40) { const k = shopI++ % SHOP_NAMES.length; signs.push({ x: fx + nx * 0.2, z: fz + nz * 0.2, nx, nz, k, w: Math.min(11, (nx ? d : w) * 0.6) }); shops.push({ name: SHOP_NAMES[k] + (shopI > 16 ? ' ' + '2345'[Math.floor((shopI - 1) / 16) - 1] + '호점' : ''), ...door }); }
+      else homes.push({ name: (h > 30 ? pick(HOME_B) : pick(HOME_A) + ' ' + (1 + Math.floor(R() * 12)) + '동'), tall: h > 30, ...door });
     }
   }
-  for (let i = -1; i <= NB; i++) for (let j = -1; j <= NB; j++) if (i < 0 || j < 0 || i >= NB || j >= NB) {     // 城区外围再围一圈楼，远处不至于空荡荡
+  for (let i = -1; i <= NB; i++) for (let j = -1; j <= NB; j++) if (i < 0 || j < 0 || i >= NB || j >= NB) {     // 도심 바깥을 건물로 한 바퀴 둘러 멀리가 휑하지 않게
     for (let k = 0; k < 3; k++) { const w = rr(20, 34), d = rr(20, 34); blds.push({ x: c(i) + WALK + rr(w / 2, P - WALK * 2 - w / 2) + (i < 0 ? -6 : i >= NB ? 6 : 0), z: c(j) + WALK + rr(d / 2, P - WALK * 2 - d / 2) + (j < 0 ? -6 : j >= NB ? 6 : 0), w, d, h: rr(14, 70), col: pick(WALLS) }); }
   }
   const dummy = new THREE.Object3D(), tc = new THREE.Color();
@@ -178,11 +178,11 @@ export function createWorld(stage) {
   blds.forEach((b, i) => { dummy.position.set(b.x, b.h / 2, b.z); dummy.rotation.set(0, 0, 0); dummy.scale.set(b.w, b.h, b.d); dummy.updateMatrix(); bldMesh.setMatrixAt(i, dummy.matrix); bldMesh.setColorAt(i, tc.setRGB(b.col[0], b.col[1], b.col[2])); });
   scene.add(bldMesh);
 
-  // 招牌：一张画着 16 个店名的图，每块招牌取其中一格
+  // 간판: 16 개 상호가 그려진 그림 한 장, 간판마다 한 칸씩 사용
   const atlas = document.createElement('canvas'); atlas.width = 1024; atlas.height = 1024;
   { const g = atlas.getContext('2d'); g.fillStyle = '#05060a'; g.fillRect(0, 0, 1024, 1024);
     SHOP_NAMES.forEach((n, k) => { const x = (k % 2) * 512, y = Math.floor(k / 2) * 128, col = SIGN_COL[k % SIGN_COL.length]; g.fillStyle = '#0b0d14'; g.fillRect(x + 6, y + 6, 500, 116); g.strokeStyle = col; g.lineWidth = 6; g.strokeRect(x + 10, y + 10, 492, 108);
-      g.fillStyle = col; g.font = '900 72px "PingFang SC", "Microsoft YaHei", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.shadowColor = col; g.shadowBlur = 18; g.fillText(n, x + 256, y + 68); g.shadowBlur = 0; }); }
+      g.fillStyle = col; g.font = '900 72px "Noto Sans KR", "Malgun Gothic", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.shadowColor = col; g.shadowBlur = 18; g.fillText(n, x + 256, y + 68); g.shadowBlur = 0; }); }
   const atlasTex = new THREE.CanvasTexture(atlas); atlasTex.colorSpace = THREE.SRGBColorSpace; atlasTex.anisotropy = 8;
   const signGeo = new THREE.PlaneGeometry(1, 1); signGeo.setAttribute('aK', new THREE.InstancedBufferAttribute(new Float32Array(signs.map((s) => s.k)), 1));
   const signMat = new THREE.ShaderMaterial({ uniforms: { ...U, tMap: { value: atlasTex } }, fog: false, side: THREE.DoubleSide,
@@ -192,7 +192,7 @@ export function createWorld(stage) {
   signs.forEach((s, i) => { dummy.position.set(s.x, 4.35, s.z); dummy.rotation.set(0, Math.atan2(s.nx, s.nz), 0); dummy.scale.set(s.w, s.w / 4, 1); dummy.updateMatrix(); signMesh.setMatrixAt(i, dummy.matrix); });
   scene.add(signMesh);
 
-  // 路灯和行道树：沿每条路两侧，每 24 米一盏灯，灯与灯之间种一棵树
+  // 가로등과 가로수: 도로 양쪽을 따라 24m 마다 등 하나, 등 사이에 나무 한 그루
   const lamps = [], trees = [];
   for (let i = 0; i <= NB; i++) for (let k = Math.ceil((-HALF - 4) / 24); k * 24 + 12 < HALF + 4; k++) for (const s of [-1, 1]) {
     const t = k * 24 + 12, off = ROAD + 1.6, nearCross = (v) => { const q = ((v + HALF) % P + P) % P; return Math.min(q, P - q) < WALK + 1; };
@@ -218,7 +218,7 @@ export function createWorld(stage) {
   trees.forEach((t, i) => { dummy.position.set(t.x, 0, t.z); dummy.rotation.set(0, i * 2.4, 0); dummy.scale.setScalar(t.s); dummy.updateMatrix(); trunkM.setMatrixAt(i, dummy.matrix); leafM.setMatrixAt(i, dummy.matrix); leafM.setColorAt(i, tc.setHSL(0.29 + (i % 7) * 0.012, 0.5, 0.34 + (i % 5) * 0.03)); });
   for (const m of [trunkM, leafM]) { m.castShadow = true; m.frustumCulled = false; scene.add(m); }
 
-  // ---------- 雨：一团跟着镜头走的雨丝 ----------
+  // ---------- 비: 카메라를 따라다니는 빗줄기 뭉치 ----------
   const RN = 5200, rainPos = new Float32Array(RN * 6), rainSeed = new Float32Array(RN * 2);
   for (let i = 0; i < RN; i++) { const x = Math.random(), y = Math.random(), z = Math.random(); rainPos.set([x, y, z, x, y, z], i * 6); rainSeed.set([0, 1], i * 2); }
   const rainGeo = new THREE.BufferGeometry(); rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3)); rainGeo.setAttribute('aEnd', new THREE.BufferAttribute(rainSeed, 1));
@@ -230,11 +230,11 @@ export function createWorld(stage) {
     fragmentShader: 'uniform vec3 uAmb; uniform float uNight; varying float vA; void main(){ gl_FragColor = vec4(mix(vec3(0.75, 0.82, 0.9), vec3(0.6, 0.66, 0.78), uNight) * (0.5 + length(uAmb)), vA * 0.5); }' });
   const rain = new THREE.LineSegments(rainGeo, rainMat); rain.frustumCulled = false; rain.layers.set(2); scene.add(rain);
 
-  // ---------- 倒影用的镜像镜头和画布 ----------
+  // ---------- 반사용 미러 카메라와 캔버스 ----------
   const vcam = new THREE.PerspectiveCamera(), reflRT = new THREE.WebGLRenderTarget(512, 512, { type: THREE.HalfFloatType }); U.tRefl.value = reflRT.texture;
   const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpU = new THREE.Vector3();
 
-  // ---------- 后期：泛光 → 环境光遮蔽、色调、暗角、颗粒、高速时的径向拖影 ----------
+  // ---------- 후처리: 블룸 → 앰비언트 오클루전, 톤, 비네트, 그레인, 고속 시 방사형 모션 블러 ----------
   const composer = new EffectComposer(renderer);
   for (const rt of [composer.renderTarget1, composer.renderTarget2]) { rt.depthTexture = new THREE.DepthTexture(1, 1); rt.depthTexture.type = THREE.UnsignedIntType; }
   composer.addPass(new RenderPass(scene, camera));
@@ -252,9 +252,9 @@ export function createWorld(stage) {
       }
       void main(){
         vec2 uv = vUv, cc = uv - 0.5; float r = length(cc);
-        uv += cc * sin(r * 40.0 - uTime * 3.0) * 0.0012 * uWetLens;                                           // 雨天镜头上薄薄一层水的扭动
+        uv += cc * sin(r * 40.0 - uTime * 3.0) * 0.0012 * uWetLens;                                           // 비 오는 날 렌즈 위 얇은 물기의 일렁임
         vec3 col = vec3(0.0); float tw = 0.0;
-        for (int i = 0; i < 6; i++) { float k = float(i) / 5.0, s = 1.0 - k * uSpeed * 0.03 * smoothstep(0.2, 0.8, r); vec2 u2 = 0.5 + cc * s; float w = 1.0 - k * 0.5;                  // 速度越快，画面四周越往外拉
+        for (int i = 0; i < 6; i++) { float k = float(i) / 5.0, s = 1.0 - k * uSpeed * 0.03 * smoothstep(0.2, 0.8, r); vec2 u2 = 0.5 + cc * s; float w = 1.0 - k * 0.5;                  // 빨라질수록 화면 가장자리가 바깥으로 늘어남
           col += vec3(texture2D(tDiffuse, u2 + cc * r * 0.006).r, texture2D(tDiffuse, u2).g, texture2D(tDiffuse, u2 - cc * r * 0.006).b) * w; tw += w; }
         col /= tw;
         float lum = dot(col, vec3(0.3, 0.6, 0.1)); col *= mix(vec3(0.3, 0.33, 0.42), vec3(1.0), mix(aoAt(vUv), 1.0, smoothstep(0.6, 1.4, lum)));
@@ -271,15 +271,15 @@ export function createWorld(stage) {
   let W = 1, H = 1;
   function resize() { W = stage.clientWidth || innerWidth; H = stage.clientHeight || innerHeight; renderer.setSize(W, H); composer.setSize(W, H); camera.aspect = W / H; camera.updateProjectionMatrix(); reflRT.setSize(Math.max(64, Math.floor(W * renderer.getPixelRatio() / 2)), Math.max(64, Math.floor(H * renderer.getPixelRatio() / 2))); }
 
-  // ---------- 环境：由钟点和天气算出太阳、天色、雾、湿度 ----------
+  // ---------- 환경: 시각과 날씨로 태양, 하늘색, 안개, 습도 계산 ----------
   const env = { hour: 12, weather: 'clear', wet: 0, rain: 0, cover: 0.12, fog: 0.0016, night: 0, flash: 0 };
   const C = (r, g, b) => new THREE.Color(r, g, b), zenD = C(0.16, 0.38, 0.82), horD = C(0.62, 0.78, 0.95), zenK = C(0.16, 0.2, 0.42), horK = C(1.0, 0.46, 0.2), zenN = C(0.008, 0.012, 0.03), horN = C(0.075, 0.06, 0.07), grey = C(0.5, 0.52, 0.56);
   function setEnv(hour, weather, dt = 99) {
-    env.hour = hour; env.weather = weather; const w = WEATHER[weather], k = Math.min(1, dt * 0.35);                 // 天气是慢慢变过去的
+    env.hour = hour; env.weather = weather; const w = WEATHER[weather], k = Math.min(1, dt * 0.35);                 // 날씨는 서서히 바뀜
     env.wet += (w.wet - env.wet) * Math.min(1, dt * (w.wet > env.wet ? 0.25 : 0.04)); env.rain += (w.rain - env.rain) * k; env.cover += (w.cover - env.cover) * k; env.fog += (w.fog - env.fog) * k;
     const ang = (hour - 5.6) / 13.6 * Math.PI, el = Math.sin(ang), az = 0.9 + (hour - 12) * 0.12, dayK = THREE.MathUtils.smoothstep(el, -0.08, 0.22), duskK = Math.exp(-(((el - 0.02) / 0.2) ** 2)) * (hour > 12 ? 1 : 0.7);
     env.night = 1 - dayK;
-    const sd = U.uSunDir.value; if (el > -0.05) sd.set(Math.cos(az) * Math.cos(ang * 0.5 + 0.3), Math.max(0.08, el), Math.sin(az) * 0.8).normalize(); else sd.set(-0.4, 0.75, 0.3).normalize();      // 夜里换成月亮的方向
+    const sd = U.uSunDir.value; if (el > -0.05) sd.set(Math.cos(az) * Math.cos(ang * 0.5 + 0.3), Math.max(0.08, el), Math.sin(az) * 0.8).normalize(); else sd.set(-0.4, 0.75, 0.3).normalize();      // 밤에는 달의 방향으로 교체
     const ov = env.cover;
     U.uZen.value.copy(zenN).lerp(zenD, dayK).lerp(zenK, duskK * 0.7).lerp(grey.clone().multiplyScalar(0.25 + 0.6 * dayK), ov * 0.75);
     U.uHor.value.copy(horN).lerp(horD, dayK).lerp(horK, duskK * (1 - ov * 0.7)).lerp(grey.clone().multiplyScalar(0.3 + 0.75 * dayK), ov * 0.7);
@@ -303,7 +303,7 @@ export function createWorld(stage) {
     if (env.flash > 0) env.flash = Math.max(0, env.flash - dt * 4);
   }
   function render() {
-    // 先从水面下方的镜像位置拍一张，给地面当倒影
+    // 수면 아래 미러 위치에서 한 장 찍어 바닥의 반사로 사용
     camera.updateMatrixWorld(); tmpA.setFromMatrixPosition(camera.matrixWorld); camera.getWorldDirection(tmpB); tmpB.add(tmpA); tmpU.set(0, 1, 0).transformDirection(camera.matrixWorld);
     vcam.position.set(tmpA.x, -tmpA.y, tmpA.z); vcam.up.set(tmpU.x, -tmpU.y, tmpU.z); vcam.lookAt(tmpB.x, -tmpB.y, tmpB.z); vcam.projectionMatrix.copy(camera.projectionMatrix); vcam.projectionMatrixInverse.copy(camera.projectionMatrixInverse); vcam.updateMatrixWorld();
     U.uReflVP.value.multiplyMatrices(vcam.projectionMatrix, vcam.matrixWorldInverse);
@@ -314,4 +314,4 @@ export function createWorld(stage) {
   }
   resize(); setEnv(12, 'clear'); addEventListener('resize', resize);
   return { renderer, scene, camera, U, env, grade, setEnv, refreshEnv, update, render, resize, shops, homes, solids, lamps, blds };
-}
+                                          }
