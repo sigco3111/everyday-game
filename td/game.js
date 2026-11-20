@@ -1,4 +1,4 @@
-// 《回声：晶塔守卫》—— 塔防。四张地图逐关解锁，沿路建塔拦住每关 20 波敌人，危急时用六个大招清场。
+// 《메아리: 크리스탈 수호전》— 타워디펜스. 4 개의 맵이 순서대로 해금되고, 길가에 타워를 세워 스테이지마다 20 웨이브의 적을 막는다. 위급할 때는 6 개의 궁극기로 정리.
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -14,15 +14,15 @@ const rand = (a = 1, b) => (b === undefined ? Math.random() * a : a + Math.rando
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const cx = (c) => (c - COLS / 2 + 0.5) * CS, cz = (r) => (r - ROWS / 2 + 0.5) * CS;
 
-// ---------- 存档：每关拿到的星数 ----------
-let dry = false;                      // 测试时不写存档
+// ---------- 저장: 스테이지별 획득 별 수 ----------
+let dry = false;                      // 테스트 시 저장 안 함
 const save = (() => { try { return JSON.parse(localStorage.getItem('echo_td')) || {}; } catch (e) { return {}; } })();
 if (!Array.isArray(save.stars)) save.stars = [];
-const persist = () => { if (dry) return; try { localStorage.setItem('echo_td', JSON.stringify(save)); } catch (e) { /* 存不了就算了 */ } };
+const persist = () => { if (dry) return; try { localStorage.setItem('echo_td', JSON.stringify(save)); } catch (e) { /* 저장이 안 되면 그냥 둠 */ } };
 const unlocked = (i) => i === 0 || save.stars[i - 1] > 0;
 
-// ---------- 地图（均为原创） ----------
-// 主题：地面、水面、树石、光照各一套配色。tree/tuft 是 [色相下限, 色相上限, 饱和度, 亮度下限, 亮度上限]
+// ---------- 맵(모두 오리지널) ----------
+// 테마: 바닥, 물, 나무와 돌, 조명마다 색상 한 세트. tree/tuft 는 [색조 하한, 색조 상한, 채도, 명도 하한, 명도 상한]
 const THEMES = [
   { css: '#3f9a52', bg: 0x040a10, sky: 0xcfe8ff, gnd: 0x24302a, hemi: 1.5, sun: 0xffe9c4, sunK: 2.3,
     g1: [0.06, 0.17, 0.09], g2: [0.14, 0.3, 0.13], g3: [0.22, 0.34, 0.12], s1: [0.3, 0.27, 0.22], s2: [0.48, 0.43, 0.35], dirt: [0.15, 0.11, 0.07],
@@ -45,28 +45,28 @@ const THEMES = [
     vein: [0.24, 0.15, 0.65], flower: 0, pine: 'pineN', pines: 120, rocks: 90, shards: 70, tufts: 420, tree: [0.72, 0.8, 0.45, 0.12, 0.2], rock: [0.72, 0.2, 0.14, 0.26], tuft: [0.72, 0.82, 0.5, 0.22, 0.36],
     shardC: [[0.5, 0.9, 2.2], [1.5, 0.5, 2.0]], mote: { col: [0.5, 0.3, 0.9], p: 0.3, vy: [0.2, 1.5], y: [0.6, 8], life: [2, 4] } },
 ];
-// ways：每条路的拐点（列, 行），起点在场外；多条路可以中途并成一条，也可以各走各的。extra：在第几波额外加的敌人
+// ways: 각 길의 꺾이는 점(열, 행), 시작은 맵 밖; 여러 길은 도중에 하나로 합쳐질 수도, 각자 갈 수도 있다. extra: 몇 웨이브에 추가되는 적
 const MAPS = [
-  { name: '翠谷', sub: '一条蜿蜒长路，适合上手', theme: 0, gold: 240, hp: 1, river: 14,
+  { name: '푸른 골짜기', sub: '구불구불한 긴 길, 입문용', theme: 0, gold: 240, hp: 1, river: 14,
     ways: [[[-2, 2], [5, 2], [5, 10], [11, 10], [11, 3], [17, 3], [17, 10], [22, 10], [22, 6], [24, 6]]],
     decor: [[0, 13], [1, 13], [0, 12], [25, 0], [24, 0], [25, 13], [24, 13], [20, 0], [8, 13], [9, 13], [19, 13], [0, 7], [8, 0], [2, 6]], extra: {} },
-  { name: '霜原', sub: '冰道盘旋向内，晶塔在正中，空袭来得快', theme: 1, gold: 260, hp: 1.15, river: 11,
+  { name: '서리 평원', sub: '얼음길이 안으로 휘감김, 크리스탈은 중앙, 공습이 빠름', theme: 1, gold: 260, hp: 1.15, river: 11,
     ways: [[[-2, 7], [3, 7], [3, 2], [20, 2], [20, 11], [7, 11], [7, 6], [13, 6]]],
     decor: [[0, 0], [1, 0], [25, 0], [25, 13], [24, 13], [0, 13], [1, 13], [23, 6], [24, 7], [12, 13], [16, 8], [5, 4], [17, 4]],
     extra: { 4: [['flyer', 5, 1.0, 2]], 9: [['flyer', 10, 0.8, 5]], 13: [['phantom', 8, 1.0, 3]], 18: [['flyer', 14, 0.6, 4]] } },
-  { name: '熔岩裂谷', sub: '上下两个入口汇成一路，路短怪急', theme: 2, gold: 300, hp: 1.05, river: 16,
+  { name: '용암 협곡', sub: '위아래 두 입구가 하나로 합쳐짐, 길이 짧고 몹이 빠름', theme: 2, gold: 300, hp: 1.05, river: 16,
     ways: [[[-2, 2], [8, 2], [8, 7], [13, 7], [13, 3], [19, 3], [19, 10], [24, 10]],
       [[-2, 11], [8, 11], [8, 7], [13, 7], [13, 3], [19, 3], [19, 10], [24, 10]]],
     decor: [[0, 6], [0, 7], [1, 6], [25, 0], [24, 0], [25, 13], [11, 0], [4, 5], [4, 8], [22, 5], [10, 12], [21, 13], [12, 10]],
     extra: { 3: [['runner', 8, 0.5, 2]], 7: [['berserker', 3, 1.6, 4]], 12: [['berserker', 6, 1.3, 3]], 17: [['jugger', 1, 1, 5]] } },
-  { name: '虚空圣所', sub: '左右夹击，晶塔居中，两头都要守', theme: 3, gold: 340, hp: 1, river: null, crystal: [13, 6],
+  { name: '공허의 성소', sub: '좌우 협공, 크리스탈은 중앙, 양쪽 모두 수비', theme: 3, gold: 340, hp: 1, river: null, crystal: [13, 6],
     ways: [[[-2, 1], [9, 1], [9, 4], [3, 4], [3, 11], [10, 11], [10, 6], [13, 6]],
       [[27, 11], [17, 11], [17, 8], [23, 8], [23, 1], [16, 1], [16, 6], [13, 6]]],
     decor: [[0, 13], [1, 13], [25, 0], [24, 0], [0, 7], [25, 5], [12, 0], [13, 13], [6, 7], [20, 4], [13, 10], [13, 2], [6, 13], [20, 13]],
     extra: { 5: [['shield', 4, 1.4, 3]], 10: [['boss', 1, 1, 10]], 15: [['jugger', 1, 1, 4]], 20: [['boss', 1, 1, 12]] } },
 ];
 
-// ---------- 路径与格子（随地图重算） ----------
+// ---------- 경로와 칸(맵에 따라 재계산) ----------
 const paths = [], blocked = new Uint8Array(COLS * ROWS), CRYSTAL = { x: 0, z: 0 }, SPOTS = [], BRIDGES = [];
 let mapI = 0, MAP = MAPS[0], TH = THEMES[0], RIVER_X = 999;
 const pathOut = { x: 0, z: 0, dx: 1, dz: 0 };
@@ -85,7 +85,7 @@ pathTex.magFilter = pathTex.minFilter = THREE.LinearFilter;
 function setupGrid(i) {
   mapI = i; MAP = MAPS[i]; TH = THEMES[MAP.theme];
   paths.length = 0; SPOTS.length = 0; BRIDGES.length = 0; blocked.fill(0);
-  const first = new Uint8Array(COLS * ROWS);                    // 第一条路占的格子，用来找支路的汇合点
+  const first = new Uint8Array(COLS * ROWS);                    // 첫 번째 길이 차지하는 칸, 지선의 합류 지점을 찾는 데 사용
   MAP.ways.forEach((way, k) => {
     const pts = way.map(([c, r]) => ({ x: cx(c), z: cz(r) })), seg = [];
     let len = 0;
@@ -101,22 +101,22 @@ function setupGrid(i) {
     }
     const p0 = pts[0];
     paths.push({ pts, seg, len, own: len, ex: clamp(p0.x, -HX - 1.6, HX + 1.6), ez: clamp(p0.z, -HZ - 1.6, HZ + 1.6), edge: p0.x < -HX ? 'L' : p0.x > HX ? 'R' : 'T',
-      fly: { ax: clamp(p0.x, -HX - 2, HX + 2), az: clamp(p0.z, -HZ - 2, HZ + 2), len: 1 } });   // fly：飞行单位从入口直线飞向晶塔
+      fly: { ax: clamp(p0.x, -HX - 2, HX + 2), az: clamp(p0.z, -HZ - 2, HZ + 2), len: 1 } });   // fly: 비행 유닛은 입구에서 크리스탈로 직선 비행
   });
   for (let q = 0; q < COLS * ROWS; q++) { pathData[q * 4] = blocked[q] * 255; pathData[q * 4 + 3] = 255; }
   pathTex.needsUpdate = true;
   const ls = paths[0].seg[paths[0].seg.length - 1];
   if (MAP.crystal) { CRYSTAL.x = cx(MAP.crystal[0]); CRYSTAL.z = cz(MAP.crystal[1]); } else { CRYSTAL.x = ls.b.x + ls.dx * 1.5; CRYSTAL.z = ls.b.z + ls.dz * 1.5; }
-  for (let k = 1; k < paths.length; k++) for (let d = 0; d < paths[k].len; d += 1) {       // own：支路并入主路之前自己那一段的长度
+  for (let k = 1; k < paths.length; k++) for (let d = 0; d < paths[k].len; d += 1) {       // own: 지선이 본선에 합류하기 전 자기 구간의 길이
     const p = pathAt(d, k), c = Math.floor((p.x + HX) / CS), r = Math.floor((p.z + HZ) / CS);
     if (c >= 0 && c < COLS && r >= 0 && r < ROWS && first[r * COLS + c]) { paths[k].own = d; break; }
   }
   for (const P of paths) P.fly.len = Math.hypot(CRYSTAL.x - P.fly.ax, CRYSTAL.z - P.fly.az);
-  RIVER_X = MAP.river == null ? 999 : cx(MAP.river);            // 河纵贯场地，路经过的那几行架桥
+  RIVER_X = MAP.river == null ? 999 : cx(MAP.river);            // 강이 맵을 세로로 가로지르고, 길이 지나는 행에는 다리를 놓음
   if (MAP.river != null) for (let r = 0; r < ROWS; r++) { const q = r * COLS + MAP.river; if (blocked[q]) BRIDGES.push(cz(r)); else blocked[q] = 2; }
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (Math.abs(cx(c) - CRYSTAL.x) < 5.2 && Math.abs(cz(r) - CRYSTAL.z) < 5.2) blocked[r * COLS + c] = 1;   // 晶塔占地
-  for (const [c, r] of MAP.decor) if (!blocked[r * COLS + c]) blocked[r * COLS + c] = 3;                                // 场内的树石，占格不可建
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {                           // 每个可建格子能覆盖多少路面，自动代打时按这个挑位置
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (Math.abs(cx(c) - CRYSTAL.x) < 5.2 && Math.abs(cz(r) - CRYSTAL.z) < 5.2) blocked[r * COLS + c] = 1;   // 크리스탈이 차지하는 면적
+  for (const [c, r] of MAP.decor) if (!blocked[r * COLS + c]) blocked[r * COLS + c] = 3;                                // 맵 안의 나무와 돌, 칸을 차지해 건설 불가
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {                           // 건설 가능한 각 칸이 커버하는 노면의 양, 자동 플레이 시 이 값으로 위치 선택
     if (blocked[r * COLS + c]) continue;
     let n = 0;
     paths.forEach((P, k) => { for (let d = 0; d < (k ? P.own : P.len); d += 2) { const p = pathAt(d, k); if (Math.hypot(p.x - cx(c), p.z - cz(r)) < 10) n++; } });
@@ -126,7 +126,7 @@ function setupGrid(i) {
 }
 setupGrid(MAPS[save.last | 0] && unlocked(save.last | 0) ? save.last | 0 : 0);
 
-// ---------- 渲染器 ----------
+// ---------- 렌더러 ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 document.body.prepend(renderer.domElement);
@@ -145,12 +145,12 @@ sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -80, right: 80, top: 56, bottom: -56, near: 1, far: 160 });
 sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.05;
 scene.add(sun);
-{ // 地面是自写着色器，不吃阴影；上面盖一层只显示阴影的透明面
+{ // 바닥은 커스텀 셰이더라 그림자를 받지 않음; 위에 그림자만 보이는 투명 면을 덮음
   const m = new THREE.Mesh(new THREE.PlaneGeometry(HX * 2 + 70, HZ * 2 + 70).rotateX(-Math.PI / 2), new THREE.ShadowMaterial({ opacity: 0.42 }));
   m.position.y = 0.03; m.receiveShadow = true; scene.add(m);
 }
 const composer = new EffectComposer(renderer);
-for (const rt of [composer.renderTarget1, composer.renderTarget2]) { rt.depthTexture = new THREE.DepthTexture(1, 1); rt.depthTexture.type = THREE.UnsignedIntType; }   // 留下场景的深度，后面算环境光遮蔽要用
+for (const rt of [composer.renderTarget1, composer.renderTarget2]) { rt.depthTexture = new THREE.DepthTexture(1, 1); rt.depthTexture.type = THREE.UnsignedIntType; }   // 장면의 깊이를 남겨 뒤의 앰비언트 오클루전 계산에 사용
 composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.7, 0.5, 0.8);
 composer.addPass(bloom);
@@ -164,10 +164,10 @@ const lens = new ShaderPass({
     float gHash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
     vec3 tap(vec2 uv) { return texture2D(tDiffuse, uv).rgb; }
     uniform sampler2D tDepth; uniform mat4 uPI; uniform float uProjY, uAoK, uDbg;
-    vec3 vpos(vec2 uv) { vec4 c = uPI * vec4(uv * 2.0 - 1.0, texture2D(tDepth, uv).x * 2.0 - 1.0, 1.0); return c.xyz / c.w; }   // 从深度还原出这个像素在镜头前的位置
-    // 环境光遮蔽：看周围一小圈的像素有多少比这个面更靠前，挡住的越多这里越暗。塔脚、石缝、树根这些交界处会自然压暗
+    vec3 vpos(vec2 uv) { vec4 c = uPI * vec4(uv * 2.0 - 1.0, texture2D(tDepth, uv).x * 2.0 - 1.0, 1.0); return c.xyz / c.w; }   // 깊이에서 이 픽셀의 카메라 앞 위치를 복원
+    // 앰비언트 오클루전: 주변 픽셀이 이 면보 얼마나 앞에 있는지 보고, 많이 가려질수록 어두워짐. 타워 밑, 돌 틈, 나무 뿌리 경계가 자연스럽게 어두워진다
     float aoAt(vec2 uv) {
-      vec3 P = vpos(uv); if (fwidth(P.z) > 0.22) return 1.0;                     // 轮廓边缘和草叶这种细碎东西算不准朝向，跳过，免得出黑点
+      vec3 P = vpos(uv); if (fwidth(P.z) > 0.22) return 1.0;                     // 윤곽 가장자리나 풀잎처럼 잘린 부분은 방향 계산이 부정확하니 건너뛰어 검은 점 방지
       vec3 N = normalize(cross(dFdx(P), dFdy(P)));
       float rad = 1.5 * uProjY / max(1.0, -P.z) * 0.5, a0 = gHash(vUv * vec2(913.0, 517.0)) * 6.2832, occ = 0.0;
       for (int i = 0; i < 10; i++) {
@@ -179,16 +179,16 @@ const lens = new ShaderPass({
     }
     void main() {
       vec2 uv = vUv;
-      vec2 sd = uv - uShock.xy; sd.x *= uAspect; float sl = length(sd) + 0.0001;      // 冲击波：一圈向外扩散的折射
+      vec2 sd = uv - uShock.xy; sd.x *= uAspect; float sl = length(sd) + 0.0001;      // 충격파: 바깥으로 퍼지는 굴절 링
       vec2 so = sd / sl * uShock.w * exp(-pow((sl - uShock.z) * 10.0, 2.0)) * 0.07; so.x /= uAspect;
       uv -= so;
       vec2 c = uv - 0.5; float r = length(c);
       vec2 off = c * r * uAb;
       vec3 col = vec3(texture2D(tDiffuse, uv + off).r, texture2D(tDiffuse, uv).g, texture2D(tDiffuse, uv - off).b);
       float lum0 = dot(col, vec3(0.3, 0.6, 0.1));
-      float ao = mix(aoAt(uv), 1.0, smoothstep(0.5, 1.0, lum0));                // 遮蔽只压环境光：本身很亮的地方（光效、高光）不压
-      col *= mix(vec3(0.2, 0.23, 0.32), vec3(1.0), ao);                         // 压暗的同时带一点冷色
-      // 移轴：画面上下两条带子轻微虚化，像在看一个微缩沙盘；中间清晰的部分做一点锐化
+      float ao = mix(aoAt(uv), 1.0, smoothstep(0.5, 1.0, lum0));                // 오클루전은 환경광만 누름: 이미 밝은 곳(광원 효과, 하이라이트)은 그대로
+      col *= mix(vec3(0.2, 0.23, 0.32), vec3(1.0), ao);                         // 어두우면서 약간 차가운 색
+      // 틸트시프트: 화면 위아래 두 띠를 살짝 흐려 미니어처 모형 같은 느낌; 가운데 선명한 부분은 살짝 샤픈
       float band = smoothstep(0.3, 0.52, abs(vUv.y - 0.52));
       if (band > 0.02) {
         vec2 br = uPx * band * 3.4;
@@ -200,20 +200,20 @@ const lens = new ShaderPass({
         col = max(col + (col - nb) * 0.3, 0.0);
       }
       col *= 1.0 - smoothstep(0.5, 1.05, r) * 0.5;
-      float lum = dot(col, vec3(0.3, 0.6, 0.1));                    // 调色：提一点饱和和对比，整体偏暖
+      float lum = dot(col, vec3(0.3, 0.6, 0.1));                    // 색보정: 채도와 대비를 살짝 올리고 전체적으로 따뜻하게
       col = max(mix(vec3(lum), col, 1.2), 0.0); col = max((col - 0.5) * 1.08 + 0.5, 0.0) * vec3(1.04, 1.0, 0.95);
-      // 电影色调曲线：高光往回压而不是直接顶白，大招叠在一起也不会糊成一片
+      // 시네마틱 톤 커브: 하이라이트를 하얗게 날리지 않고 눌러서, 궁극기가 겹쳐도 뭉개지지 않음
       vec3 fx = col * 1.16; vec3 film = clamp((fx * (2.51 * fx + 0.03)) / (fx * (2.43 * fx + 0.59) + 0.14), 0.0, 1.0);
       col = mix(col, film, 0.62);
       float l2 = dot(col, vec3(0.3, 0.6, 0.1));
-      col *= mix(vec3(0.94, 1.0, 1.07), vec3(1.05, 1.0, 0.95), smoothstep(0.08, 0.75, l2));   // 分离色调：暗部偏青，亮部偏暖
-      col += (gHash(vUv * vec2(1733.0, 977.0) + fract(uTime) * 61.0) - 0.5) * 0.034 * (1.0 - l2 * 0.6);   // 胶片颗粒，顺带消掉渐变的色带
+      col *= mix(vec3(0.94, 1.0, 1.07), vec3(1.05, 1.0, 0.95), smoothstep(0.08, 0.75, l2));   // 스플릿 토닝: 어두운 곳은 청록 쪽, 밝은 곳은 따뜻한 쪽
+      col += (gHash(vUv * vec2(1733.0, 977.0) + fract(uTime) * 61.0) - 0.5) * 0.034 * (1.0 - l2 * 0.6);   // 필름 그레인, 그러데이션 밴딩도 함께 제거
       col = mix(col, col * uTint * 1.25 + uTint * 0.05, uTintK);
       col *= 1.0 - uDark * (0.45 + 0.4 * smoothstep(0.1, 0.8, r));
-      col = mix(col, vec3(1.0) - min(col, vec3(1.0)), uInv);                             // 命中瞬间的反色定格帧
+      col = mix(col, vec3(1.0) - min(col, vec3(1.0)), uInv);                             // 명중 순간의 색반전 정지 프레임
       col += uFlashC * uFlash;
       col += vec3(0.4, 0.0, 0.0) * uHurt * smoothstep(0.3, 0.9, r);
-      if (uDbg > 0.5) col = vec3(aoAt(vUv));                                       // 调试：只看遮蔽
+      if (uDbg > 0.5) col = vec3(aoAt(vUv));                                       // 디버그: 오클루전만 보기
       gl_FragColor = vec4(col, 1.0);
     }
   `,
@@ -228,7 +228,7 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// ---------- 地面 ----------
+// ---------- 바닥 ----------
 const floorU = {
   uP: { value: Array.from({ length: MAXR }, () => new THREE.Vector4()) },
   uC: { value: Array.from({ length: MAXR }, () => new THREE.Vector3()) },
@@ -254,23 +254,23 @@ scene.add(new THREE.Mesh(new THREE.PlaneGeometry(500, 400).rotateX(-Math.PI / 2)
       float n = noise(p * 0.22) * 0.55 + noise(p * 0.9) * 0.3 + noise(p * 3.1) * 0.15;
       float g = texture2D(uGrid, (p + uHalf) / (2.0 * uHalf)).r;
       float road = smoothstep(0.4, 0.6, g);
-      // 草地：深浅草甸 + 草叶颗粒 + 零星小花
+      // 잔디: 명암 초원 + 풀잎 입자 + 드문 꽃
       vec3 grass = mix(uG1, uG2, n);
       grass = mix(grass, uG3, smoothstep(0.5, 0.8, noise(p * 0.11 + 7.0)) * 0.6);
       grass *= 0.86 + 0.28 * hash(floor(p * 5.0));
       float fh = hash(floor(p * 2.2));
-      float petal = uFlower * step(0.985, fh) * smoothstep(0.2, 0.1, length(fract(p * 2.2) - 0.5));                     // 小圆花
+      float petal = uFlower * step(0.985, fh) * smoothstep(0.2, 0.1, length(fract(p * 2.2) - 0.5));                     // 작은 둥근 꽃
       grass = mix(grass, mix(vec3(0.8, 0.75, 0.35), vec3(0.75, 0.42, 0.6), hash(floor(p * 2.2) + 3.0)), petal);
-      // 石板路：错缝铺的石块，缝隙压暗
+      // 돌길: 엇갈려 깐 돌, 틈은 어둡게
       vec2 q = p * 0.85; q.x += floor(q.y) * 0.5;
       vec2 f = fract(q) - 0.5; float id = hash(floor(q));
       float gap = smoothstep(0.37, 0.49, max(abs(f.x), abs(f.y)));
       vec3 stone = mix(uS1, uS2, id * 0.7 + n * 0.3) * (1.0 - gap * 0.5);
       vec3 col = mix(grass, stone, road);
-      col += uVein * pow(1.0 - abs(noise(p * 0.3 + 11.0) * 2.0 - 1.0), 30.0) * (1.0 - road) * (0.55 + 0.45 * sin(uTime * 1.3 + n * 9.0));   // 地缝里的微光（熔岩、虚空）
-      col = mix(col, uDirt, pow(1.0 - abs(g - 0.5) * 2.0, 5.0) * 0.6);                // 路沿的土边
+      col += uVein * pow(1.0 - abs(noise(p * 0.3 + 11.0) * 2.0 - 1.0), 30.0) * (1.0 - road) * (0.55 + 0.45 * sin(uTime * 1.3 + n * 9.0));   // 지면 틈의 희미한 빛(용암, 공허)
+      col = mix(col, uDirt, pow(1.0 - abs(g - 0.5) * 2.0, 5.0) * 0.6);                // 길 가장자리 흙테두리
       vec2 gq = abs(fract(p / ${CS}.0 + 0.5) - 0.5);
-      // 河：流动的水面、岸边白沫和湿土
+      // 강: 흐르는 수면, 물가의 포말과 젖은 흙
       float rd = abs(p.x - (uRiver.x + sin(p.y * 0.16) * 1.1));
       float water = 1.0 - smoothstep(1.35, 1.75, rd);
       col = mix(col, uDirt * 1.3, (1.0 - smoothstep(1.7, 2.7, rd)) * 0.65);
@@ -278,7 +278,7 @@ scene.add(new THREE.Mesh(new THREE.PlaneGeometry(500, 400).rotateX(-Math.PI / 2)
       float rip = noise(wp) * 0.6 + noise(wp * 2.7 + 3.0) * 0.4;
       vec3 wcol = mix(uW1, uW2, rip) + uFoam * smoothstep(0.7, 0.8, rip) * 0.5;
       wcol += uFoam * 1.1 * smoothstep(0.95, 1.35, rd) * 0.3 * (0.6 + 0.4 * sin(p.y * 3.0 + uTime * 2.0));
-      wcol += uFoam * pow(noise(wp * 5.0 + vec2(0.0, uTime * 2.0)), 9.0) * 2.4;                    // 水面上一闪一闪的碎光
+      wcol += uFoam * pow(noise(wp * 5.0 + vec2(0.0, uTime * 2.0)), 9.0) * 2.4;                    // 수면 위 반짝이는 잔빛
       col = mix(col, wcol, water);
       float line = 1.0 - smoothstep(0.008, 0.03, min(gq.x, gq.y));
       col += vec3(0.5, 0.9, 1.0) * line * (1.0 - road) * (1.0 - water) * (0.02 + 0.1 * uShow);
@@ -289,12 +289,12 @@ scene.add(new THREE.Mesh(new THREE.PlaneGeometry(500, 400).rotateX(-Math.PI / 2)
       vec3 ice = vec3(0.2, 0.4, 0.56) * (0.6 + 0.6 * noise(p * 1.4)) + vec3(0.5, 0.7, 0.8) * pow(noise(p * 5.0), 7.0);
       col = mix(col, ice, fr * 0.82);
       col += vec3(0.4, 1.0, 1.6) * uFrost * exp(-pow((fd - uFrostR) * 0.35, 2.0)) * step(uFrostR, 160.0);
-      // 场外：暗色林地，越远越沉进雾里
+      // 맵 밖: 어두운 수풀, 멀수록 안개 속으로
       vec2 e = smoothstep(uHalf - 0.3, uHalf + 0.3, abs(p));
       float outside = max(e.x, e.y);
       vec3 wild = mix(uWild1, uWild2, n) * (0.8 + 0.3 * hash(floor(p * 4.0)));
       col = mix(col, wild, outside * (1.0 - water));
-      col *= 1.0 - 0.24 * smoothstep(0.42, 0.72, noise(p * 0.03 + vec2(uTime * 0.03, uTime * 0.016)));   // 飘过的云影
+      col *= 1.0 - 0.24 * smoothstep(0.42, 0.72, noise(p * 0.03 + vec2(uTime * 0.03, uTime * 0.016)));   // 스쳐 가는 구름 그림자
       float far = smoothstep(5.0, 48.0, max(abs(p.x) - uHalf.x, abs(p.y) - uHalf.y));
       col = mix(col, uFog, far);
       for (int i = 0; i < MAXR; i++) {
@@ -309,14 +309,14 @@ scene.add(new THREE.Mesh(new THREE.PlaneGeometry(500, 400).rotateX(-Math.PI / 2)
     }
   `,
 })));
-function applyTheme() {                                         // 把当前地图的主题色灌进地面着色器和灯光
+function applyTheme() {                                         // 현재 맵의 테마 색을 바닥 셰이더와 조명에 주입
   for (const k in THEME_U) floorU[k].value.fromArray(TH[THEME_U[k]]);
   floorU.uRiver.value.set(RIVER_X, TH.flow); floorU.uFlower.value = TH.flower;
   scene.background.setHex(TH.bg); hemi.color.setHex(TH.sky); hemi.groundColor.setHex(TH.gnd); hemi.intensity = TH.hemi; sun.color.setHex(TH.sun); sun.intensity = TH.sunK;
 }
 applyTheme();
 
-// ---------- 拼模型的小工具：把若干带顶点色的零件合成一个几何体 ----------
+// ---------- 모델 조립 도구: 정점 색이 있는 부품들을 하나의 지오메트리로 합침 ----------
 const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler();
 function part(geo, shade, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) {
   const g = geo.index ? geo.toNonIndexed() : geo;
@@ -333,10 +333,10 @@ const G = {
   octa: (r) => new THREE.OctahedronGeometry(r), dode: (r) => new THREE.DodecahedronGeometry(r),
   torus: (r, t, n = 16) => new THREE.TorusGeometry(r, t, 5, n),
 };
-// 给材质加一圈轮廓光，模型边缘会亮起来，立体感强很多
-// 另外在着色器里现算三样细节，不用任何贴图：表面深浅不匀的磨损、越靠近地面越暗（东西像是真的落在地上）、朝着太阳的一点高光
+// 재질에 윤곽광을 얹어 모서리가 빛나 입체감이 크게 살아남
+// 텍스처 없이 셰이더에서 실시간으로 세 가지 디테일 계산: 고르지 않은 표면 마모, 바닥에 가까울수록 어두워짐(물체가 진짜 놓인 듯), 태양 쪽 하이라이트
 const litU = { uSunV: { value: new THREE.Vector3(0, 1, 0) }, uSunC: { value: new THREE.Color(1, 1, 1) }, uT: { value: 0 } };
-// 随风摆：越靠草尖摆得越多，每丛按自己的位置错开节奏，一阵阵的风从场地上扫过去
+// 바람에 흔들림: 풀 끝으로 갈수록 많이 흔들리고, 포기마다 위치로 리듬을 어긋나게 해 바람이 맵을 쓸고 지나가는 느낌
 function sway(m) {
   m.onBeforeCompile = (sh) => {
     sh.uniforms.uT = litU.uT;
@@ -368,7 +368,7 @@ function rim(m, k = 0.9) {
 }
 const vcMat = () => rim(new THREE.MeshLambertMaterial({ flatShading: true, vertexColors: true }));
 
-// ---------- 实例化与特效基础件 ----------
+// ---------- 인스턴싱과 이펙트 기본 요소 ----------
 const dummy = new THREE.Object3D(), tmpCol = new THREE.Color(), tmpV = new THREE.Vector3();
 function instanced(geo, mat, max, cast) {
   const m = new THREE.InstancedMesh(geo, mat, max);
@@ -462,7 +462,7 @@ const markPool = Array.from({ length: 24 }, () => {
   m.position.y = 0.06; m.visible = false; scene.add(m);
   return m;
 });
-const runeTex = (() => {              // 法阵贴图：同心环、刻度、六芒星
+const runeTex = (() => {              // 마법진 텍스처: 동심원, 눈금, 육각별
   const c = document.createElement('canvas'); c.width = c.height = 512;
   const g = c.getContext('2d'); g.translate(256, 256); g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.lineCap = 'round';
   const ring = (r, w) => { g.lineWidth = w; g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.stroke(); };
@@ -491,7 +491,7 @@ let pNext = 0;
 const pGeo = new THREE.BufferGeometry();
 pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
 pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
-const pTex = (() => {                 // 圆形柔光点
+const pTex = (() => {                 // 둥근 소프트 빛 점
   const c = document.createElement('canvas'); c.width = c.height = 32;
   const g = c.getContext('2d'), gr = g.createRadialGradient(16, 16, 0, 16, 16, 16);
   gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
@@ -521,7 +521,7 @@ function addRing(x, z, max, speed, col) {
   rings.push({ x, z, r: 0.5, max, speed, col });
 }
 function bolt(x1, y1, z1, x2, y2, z2, w, col, life = 0) { bolts.push({ x1, y1, z1, x2, y2, z2, w, col, life, max: life, one: life <= 0 }); }
-function jag(x1, y1, z1, x2, y2, z2, w, col, life = 0.12, amp = 0.09) {   // 折线闪电
+function jag(x1, y1, z1, x2, y2, z2, w, col, life = 0.12, amp = 0.09) {   // 꺾은선 번개
   const len = Math.hypot(x2 - x1, y2 - y1, z2 - z1), n = clamp(Math.ceil(len / 3.5), 2, 12), a = Math.min(len * amp, 2.4);
   let px = x1, py = y1, pz = z1;
   for (let i = 1; i <= n; i++) {
@@ -533,37 +533,37 @@ function jag(x1, y1, z1, x2, y2, z2, w, col, life = 0.12, amp = 0.09) {   // 折
 }
 const after = (t, fn) => timers.push({ t, fn });
 
-// ---------- 数据：塔、敌人、波次（均为原创） ----------
+// ---------- 데이터: 타워, 적, 웨이브(모두 오리지널) ----------
 const TOWERS = {
-  arrow: { name: '弩塔', key: '1', cost: 60, range: 13, dmg: 20, cd: 0.42, col: 0x7be08a, tip: '单体快射', my: 3.42 },
-  cannon: { name: '炮塔', key: '2', cost: 110, range: 12, dmg: 48, cd: 1.5, aoe: 3.6, ground: true, col: 0xffa24a, tip: '范围爆炸 仅对地', my: 2.75 },
-  frost: { name: '霜塔', key: '3', cost: 90, range: 9.5, dmg: 9, cd: 1.0, slow: 0.4, col: 0x7fd8ff, tip: '脉冲群体减速', my: 3.3 },
-  tesla: { name: '电塔', key: '4', cost: 150, range: 11, dmg: 32, cd: 0.85, chain: 3, col: 0xc79bff, tip: '闪电连锁', my: 4.2 },
-  prism: { name: '光棱塔', key: '5', cost: 220, range: 15, dmg: 50, col: 0xff7ac8, tip: '持续照射 越烧越痛', my: 4.9 },
-  flame: { name: '焰塔', key: '6', cost: 130, range: 7.5, dmg: 38, col: 0xff6a3a, tip: '近程喷火 持续灼烧', my: 2.6 },
-  mortar: { name: '迫击炮', key: '7', cost: 190, range: 24, minRange: 7, dmg: 95, cd: 2.6, aoe: 5.5, ground: true, col: 0xc9b27a, tip: '超远大范围 仅对地', my: 2.6 },
-  sniper: { name: '狙击塔', key: '8', cost: 170, range: 22, dmg: 150, cd: 2.2, col: 0xf2ecc0, tip: '超远单体 专打血厚', my: 5.2 },
-  beacon: { name: '增幅塔', key: '9', cost: 160, range: 6.5, dmg: 0, col: 0xffd24a, tip: '周围的塔伤害提升', my: 4.7 },
+  arrow: { name: '석궁탑', key: '1', cost: 60, range: 13, dmg: 20, cd: 0.42, col: 0x7be08a, tip: '단일 대상 속사', my: 3.42 },
+  cannon: { name: '대포탑', key: '2', cost: 110, range: 12, dmg: 48, cd: 1.5, aoe: 3.6, ground: true, col: 0xffa24a, tip: '범위 폭발, 지상 전용', my: 2.75 },
+  frost: { name: '서리탑', key: '3', cost: 90, range: 9.5, dmg: 9, cd: 1.0, slow: 0.4, col: 0x7fd8ff, tip: '펄스 광역 감속', my: 3.3 },
+  tesla: { name: '전기탑', key: '4', cost: 150, range: 11, dmg: 32, cd: 0.85, chain: 3, col: 0xc79bff, tip: '연쇄 번개', my: 4.2 },
+  prism: { name: '프리즘탑', key: '5', cost: 220, range: 15, dmg: 50, col: 0xff7ac8, tip: '지속 조사, 갈수록 강력', my: 4.9 },
+  flame: { name: '화염탑', key: '6', cost: 130, range: 7.5, dmg: 38, col: 0xff6a3a, tip: '근거리 화염, 지속 화상', my: 2.6 },
+  mortar: { name: '박격포', key: '7', cost: 190, range: 24, minRange: 7, dmg: 95, cd: 2.6, aoe: 5.5, ground: true, col: 0xc9b27a, tip: '초장거리 광역, 지상 전용', my: 2.6 },
+  sniper: { name: '저격탑', key: '8', cost: 170, range: 22, dmg: 150, cd: 2.2, col: 0xf2ecc0, tip: '초장거리 단일, 탱커 특화', my: 5.2 },
+  beacon: { name: '증폭탑', key: '9', cost: 160, range: 6.5, dmg: 0, col: 0xffd24a, tip: '주변 타워 피해량 증가', my: 4.7 },
 };
 const TOWER_IDS = Object.keys(TOWERS);
 const LV_DMG = [1, 1.7, 2.8], LV_RANGE = [1, 1.08, 1.16];
 const upCost = (t) => Math.round(t.def.cost * (t.lv === 1 ? 0.9 : 1.6));
 const FOES = {
-  grunt: { name: '行者', hp: 58, speed: 5.5, gold: 6, r: 0.9, h: 2.2, col: [0.85, 0.34, 0.3], leak: 1 },
-  runner: { name: '疾影', hp: 36, speed: 10, gold: 6, r: 0.7, h: 1.5, col: [0.95, 0.78, 0.28], leak: 1 },
-  brute: { name: '重甲', hp: 250, speed: 3.8, gold: 16, r: 1.35, h: 3.1, col: [0.5, 0.38, 0.68], armor: 7, leak: 2 },
-  swarm: { name: '群虫', hp: 20, speed: 7, gold: 3, r: 0.6, h: 1.1, col: [0.55, 0.85, 0.35], leak: 1 },
-  healer: { name: '祭司', hp: 120, speed: 5, gold: 14, r: 0.9, h: 3.0, col: [0.35, 0.95, 0.7], heal: 1, leak: 1 },
-  shield: { name: '盾卫', hp: 150, speed: 4.6, gold: 14, r: 1.0, h: 2.7, col: [0.4, 0.6, 0.95], shield: 130, leak: 1 },        // 能量盾先吸收伤害，盾在时不吃减速和灼烧
-  splitter: { name: '裂殖体', hp: 140, speed: 4.8, gold: 10, r: 1.05, h: 1.8, col: [0.45, 0.62, 0.16], split: 3, leak: 2 },   // 死后分裂成三只小的
-  mite: { name: '小裂体', hp: 30, speed: 7.5, gold: 2, r: 0.5, h: 0.9, col: [0.5, 0.66, 0.2], leak: 1 },
-  phantom: { name: '幽影', hp: 95, speed: 6.5, gold: 12, r: 0.8, h: 3.0, col: [0.6, 0.45, 0.95], phase: 1, leak: 1 },           // 周期性遁入虚空，期间塔打不到
-  flyer: { name: '翼兽', hp: 90, speed: 7, gold: 10, r: 0.9, h: 1.3, col: [0.95, 0.5, 0.25], fly: 1, leak: 1 },                // 直线飞向晶塔，对地塔打不到
-  berserker: { name: '狂战', hp: 190, speed: 4.2, gold: 14, r: 1.0, h: 2.7, col: [0.8, 0.3, 0.2], armor: 3, rage: 1, leak: 2 }, // 血越少跑越快
-  jugger: { name: '震地兽', hp: 900, speed: 3.0, gold: 60, r: 2.0, h: 3.8, col: [0.6, 0.5, 0.35], armor: 6, stomp: 1, tough: 1, big: 4.6, leak: 4 },   // 跺地震瘫附近的塔
-  boss: { name: '首领', hp: 1750, speed: 3, gold: 120, r: 2.4, h: 6.2, col: [1.0, 0.22, 0.5], boss: 1, armor: 5, tough: 1, big: 6, leak: 8 },
+  grunt: { name: '잡졸', hp: 58, speed: 5.5, gold: 6, r: 0.9, h: 2.2, col: [0.85, 0.34, 0.3], leak: 1 },
+  runner: { name: '질주자', hp: 36, speed: 10, gold: 6, r: 0.7, h: 1.5, col: [0.95, 0.78, 0.28], leak: 1 },
+  brute: { name: '중갑병', hp: 250, speed: 3.8, gold: 16, r: 1.35, h: 3.1, col: [0.5, 0.38, 0.68], armor: 7, leak: 2 },
+  swarm: { name: '무리벌레', hp: 20, speed: 7, gold: 3, r: 0.6, h: 1.1, col: [0.55, 0.85, 0.35], leak: 1 },
+  healer: { name: '사제', hp: 120, speed: 5, gold: 14, r: 0.9, h: 3.0, col: [0.35, 0.95, 0.7], heal: 1, leak: 1 },
+  shield: { name: '방패병', hp: 150, speed: 4.6, gold: 14, r: 1.0, h: 2.7, col: [0.4, 0.6, 0.95], shield: 130, leak: 1 },        // 에너지 실드가 피해를 먼저 흡수하고, 실드 중에는 감속과 화상 면역
+  splitter: { name: '분열체', hp: 140, speed: 4.8, gold: 10, r: 1.05, h: 1.8, col: [0.45, 0.62, 0.16], split: 3, leak: 2 },   // 죽으면 작은 것 셋으로 분열
+  mite: { name: '작은 분열체', hp: 30, speed: 7.5, gold: 2, r: 0.5, h: 0.9, col: [0.5, 0.66, 0.2], leak: 1 },
+  phantom: { name: '유령', hp: 95, speed: 6.5, gold: 12, r: 0.8, h: 3.0, col: [0.6, 0.45, 0.95], phase: 1, leak: 1 },           // 주기적으로 공허에 숨어 그동안 타워 공격을 받지 않음
+  flyer: { name: '날짐승', hp: 90, speed: 7, gold: 10, r: 0.9, h: 1.3, col: [0.95, 0.5, 0.25], fly: 1, leak: 1 },                // 크리스탈로 직선 비행, 지상 전용 타워로는 못 맞춤
+  berserker: { name: '광전사', hp: 190, speed: 4.2, gold: 14, r: 1.0, h: 2.7, col: [0.8, 0.3, 0.2], armor: 3, rage: 1, leak: 2 }, // 체력이 적을수록 빨라짐
+  jugger: { name: '지진수', hp: 900, speed: 3.0, gold: 60, r: 2.0, h: 3.8, col: [0.6, 0.5, 0.35], armor: 6, stomp: 1, tough: 1, big: 4.6, leak: 4 },   // 발 구르기로 주변 타워를 마비시킴
+  boss: { name: '보스', hp: 1750, speed: 3, gold: 120, r: 2.4, h: 6.2, col: [1.0, 0.22, 0.5], boss: 1, armor: 5, tough: 1, big: 6, leak: 8 },
 };
-// [类型, 数量, 间隔, 延迟]
+// [종류, 수, 간격, 지연]
 const WAVES = [
   [['grunt', 8, 1.0]],
   [['grunt', 12, 0.8]],
@@ -588,18 +588,18 @@ const WAVES = [
 ];
 const mapWaves = () => WAVES.map((w, q) => w.concat(MAP.extra[q + 1] || []));
 let waves = mapWaves();
-const MOB_N = 2, MOB_HP = 0.66;                                   // 小怪数量倍率和血量倍率（首领、震地兽不变）
+const MOB_N = 2, MOB_HP = 0.66;                                   // 잡몹 수 배율과 체력 배율(보스, 지진수는 그대로)
 const hpMul = (w) => 1 + 0.3 * (w - 1) + 0.021 * (w - 1) * (w - 1);
 const ULTS = [
-  { key: 'Q', name: '陨星坠', cd: 24, col: '#ff7a3a', tip: '砸向鼠标位置' },
-  { key: 'W', name: '雷霆万钧', cd: 30, col: '#a78bff', tip: '落雷劈遍全场' },
-  { key: 'E', name: '极寒领域', cd: 32, col: '#4ac8ff', tip: '冻结全场再碎冰' },
-  { key: 'R', name: '天穹裁决', cd: 55, col: '#ffcf4a', tip: '光柱横扫整条路' },
-  { key: 'T', name: '虚空奇点', cd: 40, col: '#c05cff', tip: '吸到一起再引爆' },
-  { key: 'G', name: '流光剑阵', cd: 36, col: '#5fe0ff', tip: '剑阵落在鼠标处' },
+  { key: 'Q', name: '운석 낙하', cd: 24, col: '#ff7a3a', tip: '마우스 위치로 낙하' },
+  { key: 'W', name: '벼락 난무', cd: 30, col: '#a78bff', tip: '전장에 낙뢰 연발' },
+  { key: 'E', name: '혹한의 영역', cd: 32, col: '#4ac8ff', tip: '전장을 얼렸다가 산산조각' },
+  { key: 'R', name: '천공의 심판', cd: 55, col: '#ffcf4a', tip: '빛기둥이 길 전체를 휩씀' },
+  { key: 'T', name: '공허의 특이점', cd: 40, col: '#c05cff', tip: '한곳에 모았다가 폭발' },
+  { key: 'G', name: '유성 검진', cd: 36, col: '#5fe0ff', tip: '검진이 마우스 위치에 강림' },
 ];
 
-// ---------- 状态 ----------
+// ---------- 상태 ----------
 let state = 'title';                 // title | play | paused | over
 let foes = [], towers = [], shots = [], queue = [];
 let gold = 0, lives = 0, kills = 0, waveN = 0, phase = 'prep', nextT = 0, waveT = 0, time = 0, won = false;
@@ -614,7 +614,7 @@ const cellT = new Array(COLS * ROWS).fill(null);
 const world = new THREE.Group();
 scene.add(world);
 
-// ---------- 场景里固定的东西：晶塔、入口、指示器、裁决光柱 ----------
+// ---------- 장면의 고정 요소: 크리스탈, 입구, 인디케이터, 심판 빛기둥 ----------
 const crystal = new THREE.Group();
 {
   const stone = new THREE.MeshLambertMaterial({ color: 0x7a858c, flatShading: true }), stoneD = new THREE.MeshLambertMaterial({ color: 0x4d565c, flatShading: true });
@@ -633,13 +633,13 @@ const crystal = new THREE.Group();
   crystal.position.set(CRYSTAL.x, 0, CRYSTAL.z);
   scene.add(crystal);
 }
-// ---------- 场景物件：树、岩石、晶簇、围墙、石灯、入口拱门、木桥。换地图时整组重建 ----------
+// ---------- 장면 오브젝트: 나무, 바위, 수정, 성벽, 돌등, 입구 아치, 나무다리. 맵 변경 시 그룹 전체 재생성 ----------
 const scenery = { lamps: [], portals: [] };
 const mapGroup = new THREE.Group();
 scene.add(mapGroup);
 const pineOf = (c1, c2, c3) => model(part(G.cyl(0.22, 0.32, 1.4, 5), [0.36, 0.24, 0.14], 0, 0.7, 0), part(G.cone(1.5, 2.2, 7), c1, 0, 2.2, 0), part(G.cone(1.15, 1.9, 7), c2, 0, 3.4, 0), part(G.cone(0.75, 1.6, 7), c3, 0, 4.5, 0));
 const SG = {
-  pine: pineOf([0.5, 1, 0.55], [0.6, 1.1, 0.6], [0.72, 1.2, 0.68]), pineN: pineOf(0.8, 1.0, 1.3),      // pineN 不带绿色偏向，颜色全由主题给
+  pine: pineOf([0.5, 1, 0.55], [0.6, 1.1, 0.6], [0.72, 1.2, 0.68]), pineN: pineOf(0.8, 1.0, 1.3),      // pineN 은 녹색 편향 없이 색은 전부 테마에서
   rock: model(part(G.dode(1), 1, 0, 0.5, 0), part(G.dode(0.6), 0.8, 0.9, 0.3, 0.3), part(G.dode(0.45), 0.7, -0.7, 0.2, -0.5)),
   shard: model(part(G.cone(0.45, 2.6, 5), 1, 0, 1.3, 0), part(G.cone(0.3, 1.7, 5), 0.8, 0.5, 0.8, 0.1, 0, 0, -0.45), part(G.cone(0.26, 1.4, 5), 0.7, -0.45, 0.7, -0.2, 0.3, 0, 0.5)),
   lamp: model(part(G.cyl(0.14, 0.2, 1.7, 5), 0.5, 0, 0.85, 0), part(G.box(0.55, 0.12, 0.55), 0.38, 0, 1.75, 0), part(G.cone(0.42, 0.4, 4), 0.38, 0, 2.5, 0, 0, Math.PI / 4, 0)),
@@ -671,7 +671,7 @@ function buildScenery() {
     m.castShadow = cast; mapGroup.add(m);
   };
   const one = (geo, mat, x, y, z, p = mapGroup) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = !!mat.isMeshLambertMaterial; p.add(m); return m; };
-  const ringPos = (min, max) => {                               // 场地外一圈的随机点，靠近镜头那侧放少一点；入口、河道、晶塔周围留空
+  const ringPos = (min, max) => {                               // 맵 바깥 한 바퀴의 무작위 지점, 카메라 쪽은 적게; 입구, 강, 크리스탈 주변은 비움
     for (let n = 0; n < 500; n++) {
       const x = rand(-HX - max, HX + max), z = rand(-HZ - max, HZ + max * 0.7), d = Math.max(Math.abs(x) - HX, Math.abs(z) - HZ);
       if (d < min || d > max) continue;
@@ -686,7 +686,7 @@ function buildScenery() {
   for (let i = 0; i < t.pines; i++) { const [x, z, d] = ringPos(4.5, 32), sc = rand(1.1, 2.3) * (1 + d * 0.012); trees.push({ x, z, ry: rand(6.3), sx: sc, sy: sc * rand(0.9, 1.3), sz: sc, ...treeC() }); }
   for (let i = 0; i < t.rocks; i++) { const [x, z] = ringPos(1.5, 34), sc = rand(0.8, 3.2); rocks.push({ x, z, rx: rand(-0.2, 0.2), ry: rand(6.3), rz: rand(-0.2, 0.2), sx: sc, sy: sc * rand(0.6, 1.3), sz: sc, ...rockC() }); }
   for (let i = 0; i < t.shards; i++) { const [x, z] = ringPos(3, 26); shards.push({ x, z, ry: rand(6.3), sx: rand(0.7, 1.6), rgb: t.shardC[Math.random() < 0.7 ? 0 : 1] }); }
-  MAP.decor.forEach(([c, r], i) => {                             // 场内占格的树石
+  MAP.decor.forEach(([c, r], i) => {                             // 칸을 차지하는 맵 안 나무와 돌
     if (blocked[r * COLS + c] !== 3) return;
     const x = cx(c), z = cz(r);
     if (i % 3 === 1) { rocks.push({ x, z, ry: rand(6.3), sx: rand(1.4, 1.9), sy: rand(1.1, 1.6), ...rockC() }); trees.push({ x: x + 1.1, z: z - 1.0, ry: rand(6.3), sx: 0.75, ...treeC(0.02) }); }
@@ -694,14 +694,14 @@ function buildScenery() {
     if (MAP.theme >= 2 && i % 2 === 0) shards.push({ x: x - 1.0, z: z - 0.8, ry: rand(6.3), sx: rand(0.5, 0.8), rgb: t.shardC[i % 4 ? 0 : 1] });
   });
   inst(SG[t.pine], SM.vc, trees); inst(SG.rock, SM.vc, rocks); inst(SG.shard, SM.shard, shards, false);
-  // 路口的石灯
+  // 길목의 돌등
   const seen = new Set();
   for (const P of paths) for (let i = 1; i < P.pts.length - 1; i++) {
     const a = P.seg[i - 1], b = P.seg[i], x = P.pts[i].x + (a.dx - b.dx) * CS / 2, z = P.pts[i].z + (a.dz - b.dz) * CS / 2, key = Math.round(x) + ',' + Math.round(z);
     if (seen.has(key) || Math.abs(x) > HX || Math.abs(z) > HZ) continue;
     seen.add(key); one(SG.lamp, SM.lamp, x, 0, z); scenery.lamps.push(one(SG.fl, SM.flame, x, 2.08, z));
   }
-  // 围墙：沿场地四边的矮石墙，入口、河道和晶塔处留缺口，四角立望柱
+  // 성벽: 맵 가장자리를 두르는 낮은 돌담, 입구와 강, 크리스탈 앞은 뚫고 네 모서리에 망루 기둥
   const wall = [], W = 1.4, wc = () => ({ h: 0.57, s: 0.08, l: rand(0.26, 0.36) });
   const open = (x, z) => paths.some((P) => Math.hypot(x - P.ex, z - P.ez) < 4.6) || Math.hypot(x - CRYSTAL.x, z - CRYSTAL.z) < 9.5;
   for (let x = -HX; x <= HX; x += 2.4) for (const sd of [-1, 1]) if (Math.abs(x - RIVER_X) >= 3.4 && !open(x, sd * (HZ + W))) wall.push({ x, z: sd * (HZ + W), sx: 2.3, sy: rand(0.9, 1.5), sz: 0.9, ...wc() });
@@ -711,17 +711,17 @@ function buildScenery() {
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) posts.push({ x: sx * (HX + W), z: sz * (HZ + W), sx: 1, h: 0.57, s: 0.08, l: 0.32 });
   inst(SG.post, SM.vc, posts);
   for (const it of posts) scenery.lamps.push(one(SG.gem, SM.flame, it.x, 5.7, it.z));
-  // 入口：每条路一座石拱门，门里是旋转的红色法阵
+  // 입구: 길마다 돌 아치 하나, 안에는 돌아가는 붉은 마법진
   for (const P of paths) {
     const gate = new THREE.Group();
     for (const sd of [-1, 1]) { one(G.box(1.1, 6.4, 1.3), SM.stoneD, 0, 3.2, sd * 3.5, gate); one(G.box(1.4, 0.5, 1.6), SM.stone, 0, 0.25, sd * 3.5, gate); one(SG.gem, SM.red, 0, 7.2, sd * 3.5, gate); }
     one(G.box(1.3, 0.9, 8.6), SM.stone, 0, 6.6, 0, gate); one(G.cone(0.7, 1.2, 4), SM.stoneD, 0, 7.6, 0, gate);
     const swirl = one(SG.swirl, SM.swirl, 0.1, 3.3, 0, gate); swirl.rotation.y = Math.PI / 2;
     one(SG.veil, SM.veil, 0, 3.3, 0, gate).rotation.y = Math.PI / 2;
-    gate.position.set(P.ex, 0, P.ez); gate.rotation.y = P.edge === 'L' ? -0.55 : P.edge === 'R' ? 0.55 : Math.PI / 2;   // 斜着摆，镜头里能看到门面
+    gate.position.set(P.ex, 0, P.ez); gate.rotation.y = P.edge === 'L' ? -0.55 : P.edge === 'R' ? 0.55 : Math.PI / 2;   // 비스듬히 배치해 카메라에 정면이 보이게
     mapGroup.add(gate); scenery.portals.push(swirl);
   }
-  // 木桥
+  // 나무다리
   for (const bz of BRIDGES) {
     const bridge = new THREE.Group();
     for (let i = 0; i < 9; i++) one(G.box(0.54, 0.16, 4.5), i % 2 ? SM.wood : SM.woodD, -2.4 + i * 0.6, 0.06 + (i % 2) * 0.02, 0, bridge);
@@ -729,9 +729,9 @@ function buildScenery() {
     bridge.position.set(RIVER_X + Math.sin(bz * 0.16) * 1.1, 0, bz);
     mapGroup.add(bridge);
   }
-  // 草丛：只长在可建的地面上
+  // 풀숲: 건설 가능한 땅에만 자람
   const tufts = [];
-  for (let n = 0; tufts.length < t.tufts * (t.flower ? 5 : 2) && n < 30000; n++) {                  // 草比原来密五倍，颜色提亮一点，不然远看像一地黑点
+  for (let n = 0; tufts.length < t.tufts * (t.flower ? 5 : 2) && n < 30000; n++) {                  // 풀 밀도를 다섯 배로, 색도 밝게, 아니면 멀리서 검은 점밭처럼 보임
     const x = rand(-HX + 0.5, HX - 0.5), z = rand(-HZ + 0.5, HZ - 0.5), b = blocked[Math.floor((z + HZ) / CS) * COLS + Math.floor((x + HX) / CS)];
     if (b === 1 || b === 2) continue;
     tufts.push({ x, z, ry: rand(6.3), sx: rand(0.7, 1.5), h: rand(t.tuft[0], t.tuft[1]), s: t.tuft[2] * rand(0.8, 1.2), l: rand(t.tuft[3], t.tuft[4]) * 1.3 + 0.03 });
@@ -739,10 +739,10 @@ function buildScenery() {
   inst(SG.tuft, SM.tuft, tufts, false);
 }
 buildScenery();
-function loadMap(i) {                                            // 换地图：重算格子、换主题色、重建景物
+function loadMap(i) {                                            // 맵 변경: 칸 재계산, 테마 색 교체, 장면 재생성
   setupGrid(i); applyTheme(); buildScenery(); crystal.position.set(CRYSTAL.x, 0, CRYSTAL.z); waves = mapWaves();
 }
-// 虚空奇点的本体：黑球、外缘辉光、两道吸积环
+// 공허의 특이점 본체: 검은 구, 가장자리 빛무리, 두 강하 고리
 const holeFx = new THREE.Group();
 {
   const core = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 20), new THREE.MeshBasicMaterial({ color: 0x000000 }));
@@ -786,15 +786,15 @@ const add0 = (p, geo, mat, x, y, z, rx = 0, ry = 0, rz = 0) => { const m = new T
 function towerMesh(type) {
   const d = TOWERS[type], g = new THREE.Group(), head = new THREE.Group(), lv2 = new THREE.Group(), lv3 = new THREE.Group(), h2 = new THREE.Group(), h3 = new THREE.Group();
   const acc = tLamb({ color: d.col, emissive: d.col, emissiveIntensity: 0.4 });
-  add0(g, new THREE.CircleGeometry(2.5, 28).rotateX(-Math.PI / 2), addMat({ color: new THREE.Color(d.col), opacity: 0.11 }), 0, 0.06, 0);   // 塔脚的一圈光晕
+  add0(g, new THREE.CircleGeometry(2.5, 28).rotateX(-Math.PI / 2), addMat({ color: new THREE.Color(d.col), opacity: 0.11 }), 0, 0.06, 0);   // 타워 발밑의 빛고리 한 겹
   const lc = new THREE.Color(d.col), lum = lc.r * 0.3 + lc.g * 0.6 + lc.b * 0.1;
-  const lit = glowMat({ color: lc.multiplyScalar(2.4 * Math.min(1, 0.42 / lum)) });      // 浅色的塔压一下亮度，免得泛白
+  const lit = glowMat({ color: lc.multiplyScalar(2.4 * Math.min(1, 0.42 / lum)) });      // 밝은 색 타워는 밝기를 눌러 하얗게 날아가지 않게
   const add = add0, H = Math.PI / 2;
-  // 底座：两层八角石台，四角压石
+  // 받침: 2 층 팔각 석대, 네 모서리에 눌러놓은 돌
   add(g, G.cyl(1.78, 1.92, 0.34, 8), TM.stoneD, 0, 0.17, 0); add(g, G.cyl(1.5, 1.66, 0.34, 8), TM.stone, 0, 0.5, 0);
   for (let i = 0; i < 4; i++) { const a = i * H + H / 2; add(g, G.box(0.34, 0.5, 0.34), TM.stoneD, Math.cos(a) * 1.6, 0.42, Math.sin(a) * 1.6, 0, -a, 0); }
   head.position.y = d.my; head.add(h2, h3); g.add(head, lv2, lv3);
-  if (type === 'arrow') {                                        // 方形箭楼 + 城垛 + 可转的弩机
+  if (type === 'arrow') {                                        // 사각 망루 + 성벽 톱니 + 회전 석궁
     add(g, G.cyl(0.9, 1.15, 2.0, 4), TM.stone, 0, 1.67, 0, 0, H / 2, 0); add(g, G.box(1.9, 0.28, 1.9), TM.stoneD, 0, 2.8, 0);
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(g, G.box(0.42, 0.42, 0.42), TM.stone, sx * 0.74, 3.15, sz * 0.74);
     add(head, G.box(0.34, 0.26, 2.3), TM.wood, 0, 0, 0.25); add(head, G.box(0.5, 0.4, 0.5), TM.dark, 0, -0.1, -0.2);
@@ -803,14 +803,14 @@ function towerMesh(type) {
     add(lv2, G.cyl(0.04, 0.04, 1.7, 4), TM.dark, -0.74, 4.1, -0.74); add(lv2, G.box(0.7, 0.42, 0.05), acc, -0.38, 4.7, -0.74);
     add(lv3, G.torus(1.28, 0.09), TM.gold, 0, 2.98, 0, H, 0, 0); add(lv3, G.cyl(0.04, 0.04, 1.7, 4), TM.dark, 0.74, 4.1, -0.74); add(lv3, G.box(0.7, 0.42, 0.05), TM.gold, 1.1, 4.7, -0.74);
     add(h3, G.cyl(0.04, 0.04, 1.7, 4), lit, 0.22, 0.2, 0.45, H, 0, 0); add(h3, G.cyl(0.04, 0.04, 1.7, 4), lit, -0.22, 0.2, 0.45, H, 0, 0);
-  } else if (type === 'cannon') {                                // 圆形炮台 + 炮塔穹顶 + 炮管
+  } else if (type === 'cannon') {                                // 원형 포좌 + 포탑 돔 + 포신
     add(g, G.cyl(1.3, 1.52, 1.4, 10), TM.stone, 0, 1.37, 0); add(g, G.torus(1.36, 0.13), TM.dark, 0, 2.0, 0, H, 0, 0);
     for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; add(g, G.box(0.16, 0.16, 0.16), TM.dark, Math.cos(a) * 1.44, 1.3, Math.sin(a) * 1.44); }
     add(head, new THREE.SphereGeometry(1.05, 10, 6, 0, Math.PI * 2, 0, H), acc, 0, -0.5, 0); add(head, G.cyl(1.08, 1.08, 0.18, 10), TM.dark, 0, -0.5, 0);
     add(head, G.cyl(0.4, 0.5, 2.3, 10), TM.dark, 0, 0, 1.2, H, 0, 0); add(head, G.torus(0.5, 0.11, 12), TM.dark, 0, 0, 2.3);
     add(h2, G.torus(0.52, 0.1, 12), acc, 0, 0, 1.2); add(h2, G.torus(0.56, 0.1, 12), acc, 0, 0, 0.6);
     add(h3, G.cyl(0.2, 0.25, 1.7, 8), TM.dark, 0.66, -0.05, 0.9, H, 0, 0); add(h3, G.cyl(0.2, 0.25, 1.7, 8), TM.dark, -0.66, -0.05, 0.9, H, 0, 0); add(h3, G.ico(0.3), TM.gold, 0, 0.62, 0);
-  } else if (type === 'frost') {                                 // 冰晶尖塔：石座上长出冰棱，核心悬浮
+  } else if (type === 'frost') {                                 // 얼음 수정탑: 돌받침 위에 고드름, 코어는 부유
     add(g, G.cyl(0.62, 1.12, 1.2, 6), TM.stone, 0, 1.27, 0);
     for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; add(g, G.cone(0.32, 1.7, 4), acc, Math.cos(a) * 0.95, 1.55, Math.sin(a) * 0.95, Math.sin(a) * 0.35, 0, -Math.cos(a) * 0.35); }
     const core = add(head, G.octa(0.95), lit, 0, 0, 0); core.scale.y = 1.5;
@@ -818,13 +818,13 @@ function towerMesh(type) {
     add(h2, G.torus(1.75, 0.06, 24), lit, 0, 0, 0, H + 0.55, 0, 0);
     for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + 1; add(lv2, G.cone(0.22, 1.2, 4), acc, Math.cos(a) * 1.25, 1.1, Math.sin(a) * 1.25, Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5); }
     for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2; add(h3, G.octa(0.3), lit, Math.cos(a) * 2.0, 0, Math.sin(a) * 2.0); }
-  } else if (type === 'tesla') {                                 // 线圈塔：层层收窄的铜环，顶上一颗电球
+  } else if (type === 'tesla') {                                 // 코일탑: 위로 갈수록 좁아지는 구리 고리, 꼭대기에 전기 구슬
     add(g, G.cyl(0.34, 0.78, 3.3, 6), TM.stoneD, 0, 2.3, 0);
     [[1.55, 0.98], [2.3, 0.8], [3.0, 0.62], [3.6, 0.46]].forEach(([y, r]) => add(g, G.torus(r, 0.12), acc, 0, y, 0, H, 0, 0));
     add(head, G.ico(0.62, 1), lit, 0, 0, 0);
     for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; add(lv2, G.cyl(0.06, 0.06, 1.5, 4), TM.dark, Math.cos(a) * 0.95, 3.5, Math.sin(a) * 0.95, Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5); add(lv2, G.ico(0.2), lit, Math.cos(a) * 1.3, 4.15, Math.sin(a) * 1.3); }
     add(h3, G.torus(1.05, 0.06, 24), lit, 0, 0, 0, H, 0, 0); add(h3, G.torus(0.85, 0.05, 24), lit, 0, 0, 0, 0.4, 0, 0);
-  } else if (type === 'prism') {                                 // 光棱塔：方尖碑托着旋转的棱晶
+  } else if (type === 'prism') {                                 // 프리즘탑: 오벨리스크가 돌아가는 프리즘을 받침
     add(g, G.cyl(0.32, 1.08, 3.7, 4), TM.stone, 0, 2.5, 0, 0, H / 2, 0); add(g, G.cyl(0.72, 0.8, 0.22, 4), TM.gold, 0, 2.0, 0, 0, H / 2, 0);
     const core = add(head, G.octa(0.82), lit, 0, 0, 0); core.scale.y = 1.6;
     add(head, G.torus(1.12, 0.07, 20), acc, 0, 0, 0);
@@ -832,27 +832,27 @@ function towerMesh(type) {
     for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; add(h3, G.octa(0.28), lit, Math.cos(a) * 1.75, 0, Math.sin(a) * 1.75); }
     add(lv3, G.cyl(0.9, 0.98, 0.2, 4), TM.gold, 0, 1.2, 0, 0, H / 2, 0);
   }
-  else if (type === 'flame') {                                   // 焰塔：石座上的铁火盆，喷口随目标转
+  else if (type === 'flame') {                                   // 화염탑: 돌받침 위의 쇠 화로, 분사구가 목표를 따라 회전
     add(g, G.cyl(1.1, 1.4, 1.3, 8), TM.stone, 0, 1.3, 0); add(g, G.cyl(1.35, 1.0, 0.7, 8), TM.dark, 0, 2.25, 0); add(g, G.torus(1.36, 0.1), acc, 0, 2.6, 0, H, 0, 0);
     add(head, G.cyl(0.5, 0.6, 0.6, 8), TM.dark, 0, 0.1, 0); add(head, G.cone(0.42, 1.5, 8), TM.dark, 0, 0.2, 1.0, -H, 0, 0); add(head, G.torus(0.36, 0.09, 12), acc, 0, 0.2, 1.65);
     add(head, G.octa(0.34), lit, 0, 0.75, 0); add(head, G.cyl(0.3, 0.3, 0.9, 8), TM.gold, 0, 0.1, -0.75, H, 0, 0);
     add(h2, G.torus(0.46, 0.08, 12), acc, 0, 0.2, 1.1); add(lv2, G.torus(1.5, 0.08), TM.gold, 0, 1.95, 0, H, 0, 0);
     add(h3, G.cone(0.26, 1.1, 6), TM.dark, 0.5, 0.2, 0.9, -H, 0, 0.25); add(h3, G.cone(0.26, 1.1, 6), TM.dark, -0.5, 0.2, 0.9, -H, 0, -0.25); add(h3, G.octa(0.24), lit, 0, 1.25, 0);
-  } else if (type === 'mortar') {                                // 迫击炮：矮墩墩的炮座，斜指天空的粗炮筒
+  } else if (type === 'mortar') {                                // 박격포: 납작한 포좌, 하늘을 향해 비껴선 굵은 포신
     add(g, G.cyl(1.45, 1.6, 0.9, 8), TM.stoneD, 0, 1.1, 0); add(g, G.torus(1.5, 0.12), TM.dark, 0, 1.55, 0, H, 0, 0);
     for (const sx of [-1, 1]) add(g, G.cyl(0.6, 0.6, 0.24, 10), TM.wood, sx * 1.45, 0.95, 0, 0, 0, H);
     add(head, G.box(1.5, 0.5, 1.5), TM.dark, 0, -0.75, 0); add(head, G.cyl(0.6, 0.72, 2.6, 10), TM.dark, 0, 0.2, 0.55, 0.7, 0, 0); add(head, G.torus(0.66, 0.12, 12), acc, 0, 1.0, 1.25, 0.7 - H, 0, 0);
     add(head, G.torus(0.72, 0.1, 12), acc, 0, -0.35, 0.1, 0.7 - H, 0, 0);
     add(h2, G.torus(0.7, 0.1, 12), TM.gold, 0, 0.3, 0.65, 0.7 - H, 0, 0); for (const sx of [-1, 1]) add(lv2, G.box(0.3, 0.9, 1.3), TM.wood, sx * 1.1, 1.9, -0.3);
     add(h3, G.cyl(0.7, 0.8, 0.5, 10), TM.gold, 0, 1.25, 1.45, 0.7, 0, 0); add(lv3, G.ico(0.4), TM.dark, 1.2, 0.95, 1.2); add(lv3, G.ico(0.4), TM.dark, 0.75, 0.95, 1.55); add(lv3, G.ico(0.4), TM.dark, 1.0, 1.5, 1.35);
-  } else if (type === 'sniper') {                                // 狙击塔：细高的瞭望架，顶上一杆长枪
+  } else if (type === 'sniper') {                                // 저격탑: 가늘고 높은 감시대, 꼭대기에 긴 총 한 자루
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(g, G.cyl(0.1, 0.14, 4.2, 4), TM.wood, sx * 0.62, 2.7, sz * 0.62, sz * 0.12, 0, -sx * 0.12);
     add(g, G.box(1.5, 0.1, 0.1), TM.wood, 0, 2.2, 0.75, 0, 0, 0.5); add(g, G.box(1.5, 0.1, 0.1), TM.wood, 0, 3.4, -0.6, 0, 0, -0.5); add(g, G.box(1.7, 0.22, 1.7), TM.stoneD, 0, 4.75, 0);
     add(head, G.box(0.5, 0.45, 0.9), TM.dark, 0, 0, -0.1); add(head, G.cyl(0.09, 0.11, 3.4, 6), TM.dark, 0, 0.05, 1.9, H, 0, 0); add(head, G.cyl(0.16, 0.16, 0.5, 6), TM.dark, 0, 0.05, 3.5, H, 0, 0);
     add(head, G.cyl(0.13, 0.13, 0.9, 6), acc, 0, 0.38, 0.3, H, 0, 0); add(head, G.octa(0.14), lit, 0, 0.38, 0.8); add(head, G.box(0.2, 0.5, 0.2), TM.wood, 0, -0.3, -0.5);
     add(lv2, G.cone(1.5, 0.9, 4), acc, 0, 6.3, 0, 0, H / 2, 0); for (const sx of [-1, 1]) add(lv2, G.cyl(0.06, 0.06, 1.1, 4), TM.wood, sx * 0.7, 5.4, -0.7);
     add(h3, G.cyl(0.05, 0.05, 3.2, 4), lit, 0, 0.22, 2.0, H, 0, 0); add(lv3, G.torus(1.0, 0.08), TM.gold, 0, 4.95, 0, H, 0, 0);
-  } else if (type === 'beacon') {                                // 增幅塔：图腾柱 + 悬浮的金色星晶和光环
+  } else if (type === 'beacon') {                                // 증폭탑: 토템 기둥 + 떠 있는 금색 별 수정과 빛고리
     add(g, G.cyl(0.55, 0.9, 3.0, 6), TM.stone, 0, 2.2, 0); add(g, G.cyl(0.95, 0.95, 0.24, 6), TM.gold, 0, 1.4, 0); add(g, G.cyl(0.75, 0.75, 0.2, 6), TM.gold, 0, 2.9, 0);
     for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; add(g, G.box(0.16, 1.7, 0.6), acc, Math.cos(a) * 0.75, 2.2, Math.sin(a) * 0.75, 0, -a, 0); }
     add(head, G.octa(0.62), lit, 0, 0, 0); add(head, G.torus(1.15, 0.07, 24), lit, 0, 0, 0, H, 0, 0); add(head, G.torus(0.9, 0.05, 24), TM.gold, 0, 0, 0, 0.6, 0, 0);
@@ -861,7 +861,7 @@ function towerMesh(type) {
     add(lv3, G.cyl(1.3, 1.4, 0.16, 6), TM.gold, 0, 0.75, 0);
   }
   const pips = [-1, 0, 1].map((k) => { const p = add(g, G.octa(0.2), lit, k * 0.5, 0.78, 1.6); p.visible = false; return p; });
-  // 二星：脚下转动的法阵；三星：一道淡光柱、金环和三颗环绕的宝石
+  // 2 성: 발밑에 도는 마법진; 3 성: 옅은 빛기둥, 금 고리, 세 개의 궤도 보석
   const ring = add(g, AURA.rune, addMat({ map: runeTex, color: lit.color.clone().multiplyScalar(0.5) }), 0, 0.09, 0);
   const crown = new THREE.Group(); g.add(crown);
   add(crown, AURA.col, addMat({ color: lit.color.clone().multiplyScalar(0.1), side: THREE.DoubleSide }), 0, 0.2, 0);
@@ -872,7 +872,7 @@ function towerMesh(type) {
   return g;
 }
 
-// ---------- 声音 ----------
+// ---------- 사운드 ----------
 let ac = null, master = null, muted = false, noiseBuf = null, meter = null, meterBuf = null;
 const lastSfx = {};
 function audio() {
@@ -880,18 +880,18 @@ function audio() {
     try {
       ac = new (window.AudioContext || window.webkitAudioContext)();
       master = ac.createGain(); master.gain.value = 1.0;
-      const comp = ac.createDynamicsCompressor();               // 压限，免得大招叠在一起破音
+      const comp = ac.createDynamicsCompressor();               // 컴프레서, 궁극기가 겹쳐도 소리가 깨지지 않게
       comp.threshold.value = -16; comp.ratio.value = 8; comp.attack.value = 0.003; comp.release.value = 0.2;
       meter = ac.createAnalyser(); meter.fftSize = 2048; meterBuf = new Float32Array(2048);
-      const out = ac.createGain(); out.gain.value = 0.62;         // 压限后留余量，峰值不削波
+      const out = ac.createGain(); out.gain.value = 0.62;         // 컴프레서 뒤 여유를 둬 피크 클리핑 방지
       master.connect(comp); comp.connect(out); out.connect(meter); meter.connect(ac.destination);
-      const rv = ac.createConvolver(), rl = Math.floor(ac.sampleRate * 1.7), ib = ac.createBuffer(2, rl, ac.sampleRate);   // 混响：一段衰减的噪声当作空间的回声
+      const rv = ac.createConvolver(), rl = Math.floor(ac.sampleRate * 1.7), ib = ac.createBuffer(2, rl, ac.sampleRate);   // 리버브: 감쇠하는 노이즈를 공간의 메아리로 사용
       for (let ch = 0; ch < 2; ch++) { const dd = ib.getChannelData(ch); for (let i = 0; i < rl; i++) dd[i] = (Math.random() * 2 - 1) * (1 - i / rl) ** 2.6; }
       rv.buffer = ib; const send = ac.createGain(); send.gain.value = 0.2; master.connect(send); send.connect(rv); rv.connect(comp);
       noiseBuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
       const d = noiseBuf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    } catch (e) { console.error('音频初始化失败', e); }
+    } catch (e) { console.error('오디오 초기화 실패', e); }
   }
   if (ac && ac.state !== 'running') ac.resume();
 }
@@ -925,7 +925,7 @@ const sfx = {
   snipe: () => limited('snipe', 60, () => { tone('sawtooth', 2600, 300, 0.12, 0.2); tone('square', 900, 120, 0.2, 0.16); hiss(0.25, 0.35, 9000); }),
   shieldBreak: () => limited('sb', 80, () => { tone('triangle', 2400, 600, 0.2, 0.16); hiss(0.2, 0.2, 8000); }),
   stomp: () => { tone('sine', 110, 35, 0.6, 0.6); tone('sawtooth', 220, 50, 0.4, 0.2); hiss(0.5, 0.3, 1500); },
-  pop: (c = 0) => limited('pop', 40, () => {                    // 连斩越高音越高：五声音阶往上爬三个八度
+  pop: (c = 0) => limited('pop', 40, () => {                    // 연속 처치가 높을수록 음이 올라감: 펜타토닉 스케일로 세 옥타브 상승
     const st = Math.min(14, Math.floor(c / 3)), f = 330 * 2 ** (([0, 2, 4, 7, 9][st % 5] + 12 * Math.floor(st / 5)) / 12);
     tone('triangle', f, f * 0.6, 0.09, 0.11); tone('square', f * 0.5, f * 0.25, 0.06, 0.05); tone('sine', 150, 55, 0.08, 0.1);
   }),
@@ -956,10 +956,10 @@ const sfx = {
   win: () => [523, 659, 784, 1046, 1318].forEach((f, i) => tone('triangle', f, f, 0.6, 0.25, i * 0.14)),
   lose: () => [392, 330, 262, 196].forEach((f, i) => tone('sawtooth', f, f * 0.97, 0.7, 0.2, i * 0.22)),
 };
-// 配乐：四个和弦循环的琶音，打怪时加一层节拍
+// 배경음악: 네 코드 순환의 아르페지오, 전투 중엔 비트 한 겹 추가
 const CHORDS = [[220, 261.6, 329.6], [174.6, 220, 261.6], [261.6, 329.6, 392], [196, 246.9, 293.7]];
 let musT = 0, musI = 0;
-// 光棱塔的激光是持续照射，用一组常驻振荡器按「正在照射的塔数」调音量
+// 프리즘탑의 레이저는 지속 조사, 상주 오실레이터 묶음을 '조사 중인 탑 수'로 음량 조절
 let hum = null, beamN = 0, beamRamp = 0;
 function laserHum(n, ramp) {
   if (!ac) return;
@@ -968,7 +968,7 @@ function laserHum(n, ramp) {
     const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1400; f.Q.value = 1.2; f.connect(g);
     const o1 = ac.createOscillator(), o2 = ac.createOscillator(), lfo = ac.createOscillator(), lg = ac.createGain();
     o1.type = 'sawtooth'; o2.type = 'square'; o1.frequency.value = 440; o2.frequency.value = 663;
-    lfo.frequency.value = 23; lg.gain.value = 30; lfo.connect(lg); lg.connect(o1.frequency); lg.connect(o2.frequency);   // 一点颤动，听起来像在滋滋作响
+    lfo.frequency.value = 23; lg.gain.value = 30; lfo.connect(lg); lg.connect(o1.frequency); lg.connect(o2.frequency);   // 살짝 떨림을 줘 지직거리는 느낌
     o1.connect(f); o2.connect(f); o1.start(); o2.start(); lfo.start();
     hum = { g, o1, o2, f };
   }
@@ -976,36 +976,37 @@ function laserHum(n, ramp) {
   hum.g.gain.setTargetAtTime(on ? Math.min(0.26, 0.12 + n * 0.035) : 0, t, 0.05);
   if (on) { hum.o1.frequency.setTargetAtTime(420 + ramp * 160, t, 0.1); hum.o2.frequency.setTargetAtTime(633 + ramp * 240, t, 0.1); hum.f.frequency.setTargetAtTime(1300 + ramp * 700, t, 0.1); }
 }
-// 语音播报：用浏览器自带的语音合成念原创台词
+// 음성 안내: 브라우저 내장 음성 합성으로 오리지널 대사를 읽음
 let voice = null, sayUntil = 0, sayPri = 0;
 const lastSay = {};
 function pickVoice() {
-  const vs = speechSynthesis.getVoices().filter((v) => /^zh/i.test(v.lang));
-  voice = vs.find((v) => /zh[-_]CN/i.test(v.lang) && /ting|婷|xiaoxiao|晓晓|yunxi|云希|普通话/i.test(v.name)) || vs.find((v) => /zh[-_]CN/i.test(v.lang)) || vs[0] || null;
+  const vs = speechSynthesis.getVoices().filter((v) => /^ko/i.test(v.lang));
+  voice = vs.find((v) => /ko[-_]KR/i.test(v.lang)) || vs[0] || null;
 }
 const canSpeak = 'speechSynthesis' in window;
 if (canSpeak) { pickVoice(); speechSynthesis.addEventListener('voiceschanged', pickVoice); }
-// 预先生成的语音文件（tools/gen_voice.py 用火山引擎合成）：页面一打开就开始下载，缺的句子才退回浏览器语音合成
-const clips = {};                                               // 台词 -> { raw: Promise<ArrayBuffer>, dur, buf }
+// 미리 생성된 음성 파일(tools/gen_voice.py 로 합성): 페이지가 열리면 다운로드 시작, 없는 문장만 브라우저 음성 합성으로 대체
+const VOICE = { '운석이여, 떨어져라!': '陨星，坠落！', '벼락이여, 쏟아져라!': '雷霆，万钧！', '만물이여, 얼어라!': '万物，冰封！', '천공의, 심판!': '天穹，裁决！', '공허여, 집어삼켜라!': '虚空，吞噬！', '검진이여, 내려와라!': '剑阵，落！', '운석 낙하, 준비 완료': '陨星坠，就绪', '벼락 난무, 준비 완료': '雷霆万钧，就绪', '혹한의 영역, 준비 완료': '极寒领域，就绪', '천공의 심판, 준비 완료': '天穹裁决，就绪', '공허의 특이점, 준비 완료': '虚空奇点，就绪', '유성 검진, 준비 완료': '流光剑阵，就绪', '석궁탑, 각성': '弩塔，觉醒', '대포탑, 각성': '炮塔，觉醒', '서리탑, 각성': '霜塔，觉醒', '전기탑, 각성': '电塔，觉醒', '프리즘탑, 각성': '光棱塔，觉醒', '화염탑, 각성': '焰塔，觉醒', '박격포, 각성': '迫击炮，觉醒', '저격탑, 각성': '狙击塔，觉醒', '증폭탑, 각성': '增幅塔，觉醒' };
+const clips = {};                                               // 대사 -> { raw: Promise<ArrayBuffer>, dur, buf }
 let clipSrc = null, sayTok = 0;
-fetch('voice/index.json').then((r) => r.json()).then((idx) => {
+/* 음성 비활성화(사용자 선택): 원본 중국어 음성 클립을 불러오지 않음 */ false && fetch('voice/index.json').then((r) => r.json()).then((idx) => {
   for (const t in idx) clips[t] = { dur: idx[t].dur, raw: fetch('voice/' + idx[t].id + '.mp3').then((r) => r.arrayBuffer()) };
 }).catch(() => {});
 function clipBuf(c) { return c.buf || (c.buf = c.raw.then((b) => ac.decodeAudioData(b))); }
-function stopSay() { sayTok++; if (clipSrc) { try { clipSrc.stop(); } catch (e) { /* 已经放完 */ } clipSrc = null; } if (canSpeak) speechSynthesis.cancel(); }
-function say(text, pri = 1, gap = 0) {                          // pri 高的可以打断低的；gap 是同一句的最短间隔（毫秒）
+function stopSay() { sayTok++; if (clipSrc) { try { clipSrc.stop(); } catch (e) { /* 이미 끝남 */ } clipSrc = null; } if (canSpeak) speechSynthesis.cancel(); }
+function say(text, pri = 1, gap = 0) {                          // pri 가 높으면 낮은 것을 끊을 수 있음; gap 은 같은 문장의 최소 간격(밀리초)
   if (muted || !ac) return;
   const now = performance.now();
   if (gap && now - (lastSay[text] || 0) < gap) return;
   if (now < sayUntil && pri <= sayPri) return;
   lastSay[text] = now;
   stopSay();
-  const c = clips[text], tok = sayTok;
+  const c = clips[VOICE[text] || text], tok = sayTok;
   sayPri = pri;
   if (c) {
     sayUntil = now + 250 + c.dur * 1000;
     clipBuf(c).then((buf) => {
-      if (tok !== sayTok || muted || performance.now() - now > 600) return;   // 解码太慢或已被别的句子顶掉就不放了
+      if (tok !== sayTok || muted || performance.now() - now > 600) return;   // 디코딩이 너무 느리거나 다른 문장이 밀어냈으면 재생 안 함
       const src = ac.createBufferSource(), g = ac.createGain();
       src.buffer = buf; g.gain.value = 1.3; src.connect(g); g.connect(master); src.start(); clipSrc = src; saidLog.push(text); if (saidLog.length > 30) saidLog.shift();
     }).catch(() => {});
@@ -1014,13 +1015,13 @@ function say(text, pri = 1, gap = 0) {                          // pri 高的可
   if (!canSpeak) return;
   const u = new SpeechSynthesisUtterance(text);
   if (voice) u.voice = voice;
-  u.lang = 'zh-CN'; u.rate = pri >= 3 ? 1.05 : 1.2; u.pitch = pri >= 3 ? 0.75 : 0.95; u.volume = 1;
+  u.lang = 'ko-KR'; u.rate = pri >= 3 ? 1.05 : 1.2; u.pitch = pri >= 3 ? 0.75 : 0.95; u.volume = 1;
   speechSynthesis.speak(u);
   sayUntil = now + 350 + text.length * 210;
 }
 const saidLog = [];
-const STREAK = { 10: '十连斩', 25: '横扫千军', 50: '所向披靡', 100: '万夫莫敌', 200: '天下无双' };
-const ULT_LINE = ['陨星，坠落！', '雷霆，万钧！', '万物，冰封！', '天穹，裁决！', '虚空，吞噬！', '剑阵，落！'];
+const STREAK = { 10: '10 연속 처치', 25: '전장 휩쓸기', 50: '막을 수 없다', 100: '천하무적', 200: '전설의 수호자' };
+const ULT_LINE = ['운석이여, 떨어져라!', '벼락이여, 쏟아져라!', '만물이여, 얼어라!', '천공의, 심판!', '공허여, 집어삼켜라!', '검진이여, 내려와라!'];
 let combo = 0, comboT = 0;
 
 function music() {
@@ -1035,7 +1036,7 @@ function music() {
   }
 }
 
-// ---------- 流程 ----------
+// ---------- 진행 ----------
 function banner(text, dur = 1.8, cls = '') { const c = $('center'); c.textContent = text; c.className = cls; bannerT = dur; }
 function resetField() {
   foes = []; towers = []; shots = []; queue = []; rings = []; bolts = []; spikes = []; orbs = []; marks = []; meteors = []; burns = []; timers = []; pillars = []; gibs = []; runes = []; blades = []; coins = [];
@@ -1047,13 +1048,13 @@ function resetField() {
 function newGame(i = mapI) {
   if (i !== mapI) loadMap(i);
   save.last = mapI; persist();
-  if (!dry) try { const h = JSON.parse(localStorage.getItem('echo_hub')) || {}, d = new Date(), k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); (h.days = h.days || {})[k] = 'td'; (h.played = h.played || {}).td = k; h.last = 'td'; localStorage.setItem('echo_hub', JSON.stringify(h)); } catch (e) { /* 存不了就算了 */ }   // 给首页记一次打卡
+  if (!dry) try { const h = JSON.parse(localStorage.getItem('echo_hub')) || {}, d = new Date(), k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); (h.days = h.days || {})[k] = 'td'; (h.played = h.played || {}).td = k; h.last = 'td'; localStorage.setItem('echo_hub', JSON.stringify(h)); } catch (e) { /* 저장이 안 되면 그냥 둠 */ }   // 홈에 플레이 기록 한 번 남김
   resetField();
   gold = MAP.gold; lives = 20; kills = 0; waveN = 0; phase = 'prep'; nextT = 15; time = 0; won = false;
   ultCd = [0, 6, 0, 18, 12, 9]; speed = 1;
   state = 'play';
   $('screen').style.display = 'none'; $('hud').style.display = 'block'; $('paused').style.display = 'none';
-  banner(MAP.name + ' · 在路边建塔，守住晶塔', 3); lowWarned = false; say('守护晶塔', 1);
+  banner(MAP.name + ' · 길가에 타워를 세워 크리스탈을 지키세요', 3); lowWarned = false; say('크리스탈을 지켜라', 1);
 }
 function startWave() {
   if (phase !== 'prep' || waveN >= waves.length) return;
@@ -1061,15 +1062,15 @@ function startWave() {
   waveN++; phase = 'wave'; waveT = 0; queue = [];
   let boss = false;
   const cur = waves[waveN - 1];
-  cur.forEach(([type, n, gap, delay = 0], gi) => {                // 多条路时：整波只有一组就逐只轮流走，否则一组走一条
-    const k = FOES[type].big ? 1 : MOB_N;                          // 小怪成群：数量翻倍、间隔减半，血量在 spawn 里相应减半
+  cur.forEach(([type, n, gap, delay = 0], gi) => {                // 길이 여러 개일 때: 한 웨이브가 한 그룹이면 한 마리씩 번갈아, 아니면 그룹마다 길 하나
+    const k = FOES[type].big ? 1 : MOB_N;                          // 잡몹은 무리로: 수는 두 배, 간격은 절반, 체력은 spawn 에서 절반으로
     for (let i = 0; i < n * k; i++) queue.push({ t: delay + i * gap / k, type, path: (gi + (cur.length === 1 ? i : 0)) % paths.length });
     if (type === 'boss') boss = true;
   });
   queue.sort((a, b) => a.t - b.t);
-  banner('第 ' + waveN + ' 波' + (boss ? ' · 首领来袭' : waveN === waves.length ? ' · 最后一波' : ''), 2.2);
+  banner(waveN + ' 웨이브' + (boss ? ' · 보스 등장' : waveN === waves.length ? ' · 마지막 웨이브' : ''), 2.2);
   const has = (k) => cur.some((g) => g[0] === k);
-  sfx.wave(); say(waveN === waves.length ? '最后一波，守住' : boss ? '首领来袭' : has('jugger') ? '震地兽来袭，小心防御塔' : has('flyer') ? '空中敌人来袭' : '敌军来袭', 2);
+  sfx.wave(); say(waveN === waves.length ? '마지막 웨이브, 버텨라' : boss ? '보스 등장' : has('jugger') ? '지진수 등장, 타워 조심' : has('flyer') ? '공중 적 접근' : '적군 접근', 2);
 }
 function spawn(type, d0, off0, pi = 0) {
   if (!paths[pi]) pi = 0;
@@ -1082,8 +1083,8 @@ function spawn(type, d0, off0, pi = 0) {
   place(e); foes.push(e);
   return e;
 }
-function place(e) {                                             // 先算路上的位置（bx, bz），再叠上被奇点拽偏的量
-  if (e.fly) {                                                   // 飞行单位不走路，从入口直线飞向晶塔
+function place(e) {                                             // 먼저 길 위 위치(bx, bz)를 구하고 특이점에 끌린 만큼을 더함
+  if (e.fly) {                                                   // 비행 유닛은 길을 걷지 않고 입구에서 크리스탈로 직선 비행
     const F = paths[e.path].fly, k = e.d / F.len, ux = (CRYSTAL.x - F.ax) / F.len, uz = (CRYSTAL.z - F.az) / F.len, w = Math.sin(Math.min(1, k) * Math.PI);
     e.bx = F.ax + (CRYSTAL.x - F.ax) * k - uz * e.off * w; e.bz = F.az + (CRYSTAL.z - F.az) * k + ux * e.off * w; e.dx = ux; e.dz = uz;
   } else {
@@ -1094,8 +1095,8 @@ function place(e) {                                             // 先算路上�
 }
 function hurt(e, dmg, o = {}) {
   if (!e.alive) return;
-  if (e.phased && !o.ult) return;                               // 遁入虚空时只有大招打得到
-  if (e.shield > 0) {                                           // 能量盾先扛
+  if (e.phased && !o.ult) return;                               // 공허에 숨은 동안엔 궁극기만 맞힐 수 있음
+  if (e.shield > 0) {                                           // 에너지 실드가 먼저 버팀
     const a = Math.min(e.shield, dmg); e.shield -= a; dmg -= a;
     if (e.shield <= 0) { burst(e.x, e.cy, e.z, 26, [0.6, 1.4, 3], 12, 0.5); addRing(e.x, e.z, 5, 18, [0.3, 0.8, 1.8]); sfx.shieldBreak(); }
     if (dmg <= 0) { if (!o.quiet) e.flash = 0.08; return; }
@@ -1106,25 +1107,25 @@ function hurt(e, dmg, o = {}) {
   if (!o.quiet) e.flash = 0.12;
   if (e.hp <= 0) {
     e.alive = false; gold += e.gold; kills++;
-    combo++; comboT = 2.2;                                       // 连斩：两秒内接着杀就累计
+    combo++; comboT = 2.2;                                       // 연속 처치: 2 초 안에 이어서 잡으면 누적
     if (STREAK[combo]) { banner(STREAK[combo] + '　×' + combo, 1.8, 'big'); say(STREAK[combo], 2); }
-    else if (kills === 1) say('首杀', 1);
+    else if (kills === 1) say('첫 처치', 1);
     if (o.ult) o.ult.n++;
     if (e.def.split) { for (let i = 0; i < e.def.split; i++) spawn('mite', Math.max(0, e.d - i * 0.9), rand(-1.4, 1.4), e.path); burst(e.x, 0.8, e.z, 20, [1.6, 2.2, 0.5], 10, 0.5); }
     const c = [e.col[0] * 2.2, e.col[1] * 2.2, e.col[2] * 2.2];
-    if (gibs.length < 200) {                                    // 每个敌人死了都会碎开飞出去，被大招打死的飞得更高更远
+    if (gibs.length < 200) {                                    // 적은 죽을 때마다 조각나 튀고, 궁극기에 죽으면 더 높이 멀리 날아감
       const u = !!o.ult, ax = e.x - (o.fx === undefined ? e.x : o.fx), az = e.z - (o.fz === undefined ? e.z : o.fz), al = Math.hypot(ax, az) || 1, sp = u ? rand(8, 22) : rand(2, 7), sd = u ? 5 : 6;
       gibs.push({ type: e.type, x: e.x, y: e.h * 0.5, z: e.z, vx: ax / al * sp + rand(-sd, sd), vy: u ? rand(18, 38) : rand(11, 20), vz: az / al * sp + rand(-sd, sd), spin: rand(4, 12), t: 0, life: u ? rand(0.9, 1.4) : rand(0.55, 0.85),
         col: o.ice ? [0.7, 1.3, 1.9] : [e.col[0] * 1.6 + 0.3, e.col[1] * 1.6 + 0.2, e.col[2] * 1.6] });
     }
-    if (e.boss) { pillar(e.x, e.z, 5, 60, c, 0.8); shockAt(e.x, e.z, 1); burst(e.x, 2.5, e.z, 240, c, 26, 1.0); addRing(e.x, e.z, 26, 34, c); addRing(e.x, e.z, 16, 18, [2, 2, 2]); shake = Math.max(shake, 2); flash = Math.max(flash, 0.3); sfx.bossDie(); say('首领已被击败', 3); }
+    if (e.boss) { pillar(e.x, e.z, 5, 60, c, 0.8); shockAt(e.x, e.z, 1); burst(e.x, 2.5, e.z, 240, c, 26, 1.0); addRing(e.x, e.z, 26, 34, c); addRing(e.x, e.z, 16, 18, [2, 2, 2]); shake = Math.max(shake, 2); flash = Math.max(flash, 0.3); sfx.bossDie(); say('보스 처치 완료', 3); }
     else { burst(e.x, e.h * 0.5, e.z, 12, c, 10, 0.45); sfx.pop(combo); }
     for (let i = 0; i < (e.big ? 8 : 3); i++) spark(e.x + rand(-e.r, e.r), e.alt + e.h * 0.6, e.z + rand(-e.r, e.r), rand(-0.6, 0.6), rand(4, 8), rand(-0.6, 0.6), [c[0] * 0.5 + 0.7, c[1] * 0.5 + 0.7, c[2] * 0.5 + 0.7], rand(0.6, 1.1), -1);
     if (e.big && !e.fly) { if (marks.length < 22) marks.push({ x: e.x, z: e.z, r: e.r * 2.4, t: 0, life: 3.2, col: [c[0] * 0.45, c[1] * 0.45, c[2] * 0.45], op: 0.3 }); if (rings.length < 12) addRing(e.x, e.z, 9, 22, c); }
     coinDrop(e.x, e.h * 0.6, e.z, e.boss ? 10 : e.big ? 5 : 1);
     chargeUlts(e.big ? 3 : 0.22 + Math.min(combo, 60) * 0.008);
     const bx = e.x, bz = e.z, bd = e.maxHp * (e.big ? 0.15 : CHAIN_K), bR = e.big ? 9 : 2.4 + e.r, bc = [e.col[0] * 0.9 + 0.3, e.col[1] * 0.9 + 0.2, e.col[2] * 0.9 + 0.1];
-    after(0.08, () => chainBlast(bx, bz, bd, bR, bc));          // 连锁爆炸：稍晚一拍炸到旁边的敌人，密集时会一串串传下去
+    after(0.08, () => chainBlast(bx, bz, bd, bR, bc));          // 연쇄 폭발: 한 박자 늦게 옆의 적을 터뜨려, 밀집하면 연달아 번짐
   }
 }
 const CHAIN_K = 0.22;
@@ -1134,10 +1135,10 @@ function chainBlast(x, z, dmg, R, col) {
   burst(x, 0.8, z, 7, col, R * 3.4, 0.28, 0.25, 4);
   if (rings.length < 12) addRing(x, z, R, 24, [col[0] * 0.5, col[1] * 0.5, col[2] * 0.5]);
 }
-function chargeUlts(sec) {                                      // 击杀给所有大招充能，连斩越高充得越快
-  for (let i = 0; i < ULTS.length; i++) if (ultCd[i] > 0) { ultCd[i] = Math.max(0, ultCd[i] - sec); if (ultCd[i] === 0) say(ULTS[i].name + '，就绪', 0); }
+function chargeUlts(sec) {                                      // 처치가 모든 궁극기를 충전, 연속 처치가 높을수록 빨리 참
+  for (let i = 0; i < ULTS.length; i++) if (ultCd[i] > 0) { ultCd[i] = Math.max(0, ultCd[i] - sec); if (ultCd[i] === 0) say(ULTS[i].name + ', 준비 완료', 0); }
 }
-// 金币：从敌人身上蹦出来，落一下再飞向左上角的金币数
+// 골드: 적에게서 튀어 나와 잠시 떨어졌다가 왼쪽 위 골드 숫자로 날아감
 let coins = [], goldPop = 0, coinNx = -0.8, coinNy = 0.9, coinTick = 0;
 const coinTo = new THREE.Vector3();
 function coinDrop(x, y, z, n) {
@@ -1164,20 +1165,20 @@ function updateCoins(dt) {
 function leak(e) {
   e.alive = false; lives -= e.leak; hurtFx = 1; shake = Math.max(shake, 1.2);
   burst(CRYSTAL.x, 4, CRYSTAL.z, 50, [2.4, 0.4, 0.3], 14, 0.6); addRing(CRYSTAL.x, CRYSTAL.z, 12, 22, [2, 0.3, 0.2]); sfx.leak();
-  if (lives <= 6 && lives > 0 && !lowWarned) { lowWarned = true; say('晶塔告急', 3); } else say('晶塔正在遭受攻击', 1, 7000);
+  if (lives <= 6 && lives > 0 && !lowWarned) { lowWarned = true; say('크리스탈 위기', 3); } else say('크리스탈이 공격받고 있다', 1, 7000);
   if (lives <= 0) { lives = 0; endGame(false); }
 }
 function endGame(win) {
   if (state !== 'play') return;
   won = win; state = 'over'; buildType = null; selected = null;
   if (win) { gotStars = lives >= 18 ? 3 : lives >= 10 ? 2 : 1; save.stars[mapI] = Math.max(save.stars[mapI] || 0, gotStars); persist(); }
-  say(win ? '胜利' : '失败', 4);
+  say(win ? '승리' : '패배', 4);
   if (win) { sfx.win(); for (let i = 0; i < 6; i++) after(i * 0.25, () => { const x = rand(-HX + 10, HX - 10), z = rand(-HZ + 6, HZ - 6); burst(x, 14, z, 120, [rand(1, 3), rand(1, 3), rand(1, 3)], 20, 1.2); }); }
   else { sfx.lose(); sfx.boom(true); crystal.visible = false; burst(CRYSTAL.x, 5, CRYSTAL.z, 400, [0.6, 1.6, 3], 30, 1.4); addRing(CRYSTAL.x, CRYSTAL.z, 60, 40, [0.6, 1.4, 2.6]); shake = 3; flash = 0.8; flashC.set(0.7, 0.9, 1); }
   setTimeout(() => { if (state === 'over') showScreen(); }, 1800);
 }
 
-// ---------- 建造 ----------
+// ---------- 건설 ----------
 const inGrid = (c, r) => c >= 0 && c < COLS && r >= 0 && r < ROWS;
 function refresh(t) {
   const d = t.def, m = LV_DMG[t.lv - 1];
@@ -1188,7 +1189,7 @@ function refresh(t) {
   ud.lv2.forEach((o) => { o.visible = t.lv >= 2; }); ud.lv3.forEach((o) => { o.visible = t.lv >= 3; });
   ud.head.scale.setScalar(1 + (t.lv - 1) * 0.1); ud.ring.scale.setScalar(t.lv >= 3 ? 3.3 : 2.7);
 }
-function rebuff() {                                             // 增幅塔给范围内的塔加伤害，取最高的一座，不叠加
+function rebuff() {                                             // 증폭탑이 범위 안 타워의 피해를 올림, 가장 높은 것 하나만 적용하고 중첩 안 됨
   for (const t of towers) { t.buff = 1; t.buffBy = null; refresh(t); }
   for (const b of towers) if (b.type === 'beacon') for (const t of towers) {
     if (t === b || t.type === 'beacon' || Math.hypot(t.x - b.x, t.z - b.z) > b.range + 0.1) continue;
@@ -1199,8 +1200,8 @@ function rebuff() {                                             // 增幅塔给�
 }
 function build(type, c, r, silent) {
   const d = TOWERS[type], i = r * COLS + c;
-  if (!inGrid(c, r) || blocked[i] || cellT[i]) { if (!silent) { banner('这里不能建造', 0.9); sfx.deny(); } return null; }
-  if (gold < d.cost) { if (!silent) { banner('金币不足', 0.9); sfx.deny(); } return null; }
+  if (!inGrid(c, r) || blocked[i] || cellT[i]) { if (!silent) { banner('여기에는 지을 수 없습니다', 0.9); sfx.deny(); } return null; }
+  if (gold < d.cost) { if (!silent) { banner('골드 부족', 0.9); sfx.deny(); } return null; }
   gold -= d.cost;
   const t = { type, def: d, c, r, x: cx(c), z: cz(r), lv: 1, cdT: 0.2, face: 0, spin: rand(6), ramp: 0, target: null, spent: d.cost, mesh: towerMesh(type), fxc: litArr(d.col), pop: 0.25, rise: 0, kick: 0, stunT: 0, buff: 1, buffBy: null };
   t.mesh.position.set(t.x, 0, t.z); world.add(t.mesh);
@@ -1211,11 +1212,11 @@ function build(type, c, r, silent) {
 function upgrade(t, silent) {
   if (!t || t.lv >= 3) return false;
   const c = upCost(t);
-  if (gold < c) { if (!silent) { banner('金币不足', 0.9); sfx.deny(); } return false; }
+  if (gold < c) { if (!silent) { banner('골드 부족', 0.9); sfx.deny(); } return false; }
   gold -= c; t.spent += c; t.lv++; rebuff(); upgradeFx(t);
   return true;
 }
-function upgradeFx(t) {                                          // 升星演出：光柱、法阵、盘旋上升的光点；满星再加天降雷光和冲击波
+function upgradeFx(t) {                                          // 등급 업 연출: 빛기둥, 마법진, 소용돌이치며 오르는 빛점; 만랩은 하늘의 번개 빛과 충격파 추가
   const max = t.lv === 3, c = t.fxc, my = t.def.my, dim = [c[0] * 0.6, c[1] * 0.6, c[2] * 0.6];
   t.pop = max ? 0.45 : 0.3;
   pillar(t.x, t.z, max ? 2.0 : 1.4, max ? 30 : 16, dim, max ? 0.9 : 0.55); pillar(t.x, t.z, 0.4, max ? 34 : 18, [1.8, 1.6, 1.2], 0.4);
@@ -1231,8 +1232,8 @@ function upgradeFx(t) {                                          // 升星演出
     for (let i = 0; i < 5; i++) after(i * 0.07, () => jag(t.x + rand(-6, 6), 60, t.z - rand(4, 12), t.x, my, t.z, 0.32, [2.4, 2.0, 0.9], 0.2, 0.06));
     after(0.35, () => { burst(t.x, my + 1, t.z, 80, c, 18, 0.9, 1.6); addRing(t.x, t.z, 12, 26, c); });
     shake = Math.max(shake, 1.4); flash = Math.max(flash, 0.06); flashC.set(1, 0.92, 0.7); shockAt(t.x, t.z, 0.7, 0.6);
-    banner(t.def.name + ' · 觉醒', 1.6, 'big'); sfx.upMax(); say(t.def.name + '，觉醒', 2);
-  } else { shake = Math.max(shake, 0.5); sfx.up(); say('升级完成', 0, 5000); }
+    banner(t.def.name + ' · 각성', 1.6, 'big'); sfx.upMax(); say(t.def.name + ', 각성', 2);
+  } else { shake = Math.max(shake, 0.5); sfx.up(); say('업그레이드 완료', 0, 5000); }
 }
 function sell(t) {
   if (!t) return;
@@ -1242,7 +1243,7 @@ function sell(t) {
   burst(t.x, 1, t.z, 20, [2, 1.6, 0.5], 8, 0.5); sfx.sell();
 }
 
-// ---------- 塔的攻击 ----------
+// ---------- 타워 공격 ----------
 const canHit = (t, e) => e.alive && !e.phased && !(t.def.ground && e.fly);
 function pickTarget(t, strongest) {
   let best = null, bv = -1;
@@ -1261,14 +1262,14 @@ function updateTowers(dt) {
   for (const t of towers) {
     t.cdT -= dt; t.spin += dt; if (t.pop > 0) t.pop -= dt; if (t.kick > 0) t.kick = Math.max(0, t.kick - dt * 3.5); if (t.rise < 1) t.rise = Math.min(1, t.rise + dt * 3.2);
     const d = t.def, my = d.my;
-    if (t.lv === 3 && Math.random() < 0.1) spark(t.x + rand(-1.7, 1.7), rand(0.3, 1.5), t.z + rand(-1.7, 1.7), 0, rand(2.5, 5), 0, t.fxc, rand(0.5, 1), 0);   // 满星的塔一直冒光点
-    if (t.stunT > 0) {                                           // 被震瘫：冒火花，不开火
+    if (t.lv === 3 && Math.random() < 0.1) spark(t.x + rand(-1.7, 1.7), rand(0.3, 1.5), t.z + rand(-1.7, 1.7), 0, rand(2.5, 5), 0, t.fxc, rand(0.5, 1), 0);   // 만랩 타워는 계속 빛점을 뿜음
+    if (t.stunT > 0) {                                           // 마비 상태: 불꽃만 튀고 발사 안 함
       t.stunT -= dt;
       if (Math.random() < 0.25) { const a = rand(6.3); jag(t.x, my, t.z, t.x + Math.cos(a) * 1.6, rand(0.5, my), t.z + Math.sin(a) * 1.6, 0.1, [2.6, 2.2, 0.6], 0.08, 0.2); }
       continue;
     }
     if (t.type === 'tesla' && Math.random() < 0.04 * t.lv) { const a = rand(6.3); jag(t.x, my, t.z, t.x + Math.cos(a) * 1.3, my - rand(0.4, 1.6), t.z + Math.sin(a) * 1.3, 0.1, [1.6, 1.1, 2.6], 0.08, 0.2); }
-    if (t.type === 'beacon') {                                   // 增幅塔：不攻击，定时向受益的塔送一道金光
+    if (t.type === 'beacon') {                                   // 증폭탑: 공격하지 않고 주기적으로 수혜 타워에 금빛 줄기를 보냄
       if (t.cdT <= 0) {
         t.cdT = 2.2;
         if (rings.length < 12) addRing(t.x, t.z, t.range, 14, [0.9, 0.65, 0.15]);
@@ -1296,7 +1297,7 @@ function updateTowers(dt) {
       if (any) { t.cdT = d.cd; if (rings.length < 12) addRing(t.x, t.z, t.range, 30, [0.25, 0.6, 0.9]); burst(t.x, my, t.z, 6, [0.8, 1.6, 2.4], 6, 0.4); sfx.frost(); }
       continue;
     }
-    if (t.type === 'flame') {                                    // 焰塔：朝目标喷出一道扇形火舌，沾上就持续灼烧
+    if (t.type === 'flame') {                                    // 화염탑: 목표를 향해 부채꼴 화염을 뿜어 닿으면 지속 화상
       const e = pickTarget(t);
       t.target = e;
       if (!e) continue;
@@ -1330,13 +1331,13 @@ function updateTowers(dt) {
       shots.push({ kind: 'shell', x0: t.x, y0: my + (big ? 1.2 : 0), z0: t.z, x: t.x, y: my, z: t.z, tx: e.x + e.dx * sp * T, tz: e.z + e.dz * sp * T, t: 0, T, dmg: t.dmg, aoe: t.aoe, hi: big ? 18 : 6, big });
       burst(mx, my + (big ? 1.5 : 0), mz, big ? 14 : 5, [2.4, 1.4, 0.5], big ? 9 : 5, 0.3, big ? 2.5 : 0.9);
       if (big) sfx.mortar(); else sfx.cannon();
-    } else if (t.type === 'sniper') {                            // 狙击：一道瞬发的光迹，无视护甲
+    } else if (t.type === 'sniper') {                            // 저격: 즉발 빛줄기, 방어력 무시
       t.kick = 1.0;
       const sx = t.x + Math.sin(t.face) * 3.6, sz = t.z + Math.cos(t.face) * 3.6;
       bolt(sx, my, sz, e.x, e.cy, e.z, 0.3, [3.6, 3.2, 1.8], 0.2); bolt(sx, my, sz, e.x, e.cy, e.z, 0.7, [0.8, 0.7, 0.3], 0.35);
       burst(sx, my, sz, 8, [3.4, 3, 1.6], 7, 0.25); burst(e.x, e.cy, e.z, 14, [3.4, 3, 1.6], 12, 0.35);
       hurt(e, t.dmg); sfx.snipe();
-    } else {                                                     // 电塔：连锁闪电
+    } else {                                                     // 전기탑: 연쇄 번개
       const hit = [e], col = [2.0, 1.4, 3.2]; t.kick = 0.25; burst(t.x, my + 0.4, t.z, 6, col, 6, 0.2, 0.8);
       let cur = e, px = t.x, py = my, pz = t.z, dmg = t.dmg;
       for (let n = 0; n < t.chain; n++) {
@@ -1375,16 +1376,16 @@ function updateShots(dt) {
   shots = shots.filter((s) => !s.dead);
 }
 
-// ---------- 大招 ----------
+// ---------- 궁극기 ----------
 const ultPow = () => hpMul(Math.max(1, waveN)) * Math.sqrt(MAP.hp);
 const track = (name) => ({ name, n: 0 });
-function report(tr) { if (tr.n > 0 && state === 'play') { banner(tr.name + ' · 击杀 ' + tr.n, 2, 'big'); if (tr.n >= 15) say(tr.n >= 40 ? '大获全胜' : '漂亮', 1); } }
+function report(tr) { if (tr.n > 0 && state === 'play') { banner(tr.name + ' · 처치 ' + tr.n, 2, 'big'); if (tr.n >= 15) say(tr.n >= 40 ? '대승리' : '멋지다', 1); } }
 function shockAt(x, z, str = 1, life = 0.8) { shock = { x, z, t: 0, life, str }; }
 function impactFrame(ms = 70) { invUntil = performance.now() + ms; }
-function pillar(x, z, r, h, col, life = 0.6) { if (pillars.length < 86) pillars.push({ x, z, r, h: Math.min(h, 34) * (0.8 + Math.random() * 0.4), col, t: 0, life }); }   // 太高会糊到镜头上
+function pillar(x, z, r, h, col, life = 0.6) { if (pillars.length < 86) pillars.push({ x, z, r, h: Math.min(h, 34) * (0.8 + Math.random() * 0.4), col, t: 0, life }); }   // 너무 높으면 카메라에 걸림
 function rune(x, y, z, r, col, life, spin) { const o = { x, y, z, r, col, life, spin, t: 0 }; if (runes.length >= 8) runes.shift(); runes.push(o); return o; }
 function look(x, z, k, rate = 4) { focusX = x; focusZ = z - CAM_Z; zoomTo = k; zoomRate = rate; }
-function cutIn(i) {                                             // 横贯屏幕的技能名
+function cutIn(i) {                                             // 화면을 가로지르는 스킬 이름
   const c = $('cut');
   c.style.setProperty('--c', ULTS[i].col); c.firstChild.textContent = ULTS[i].name;
   c.classList.remove('go'); void c.offsetWidth; c.classList.add('go');
@@ -1392,11 +1393,11 @@ function cutIn(i) {                                             // 横贯屏幕�
 function castUlt(i, x, z) {
   if (state !== 'play' || ultCd[i] > 0) { if (state === 'play') sfx.deny(); return false; }
   ultCd[i] = ULTS[i].cd;
-  cutIn(i); sfx.cast(); say(ULT_LINE[i], 3); slowT = 0.32; slowK = 0.12;              // 出手先顿一下
+  cutIn(i); sfx.cast(); say(ULT_LINE[i], 3); slowT = 0.32; slowK = 0.12;              // 시전 시 잠깐 멈칫
   [castMeteor, castStorm, castFrost, castJudge, castHole, castBlades][i](clamp(x, -HX, HX), clamp(z, -HZ, HZ));
   return true;
 }
-// Q 陨星坠：法阵锁定 → 巨陨石砸落 → 碎星雨 → 余震火柱
+// Q 운석 낙하: 마법진 조준 → 거대 운석 낙하 → 부서진 별똥비 → 여진의 불기둥
 function impact(x, z, R, dmg, tr, big) {
   for (const e of foes) {
     if (!e.alive) continue;
@@ -1415,12 +1416,12 @@ function impact(x, z, R, dmg, tr, big) {
     pillar(x, z, R * 0.2, 90, [4, 3.2, 2], 0.6);
     orbs.push({ x, y: 1, z, r0: 0.5, r1: R * 0.55, t: 0, life: 0.6, col: [4, 3.4, 2.2] });
     orbs.push({ x, y: 1, z, r0: 2, r1: R * 1.5, t: 0, life: 0.7, col: [0.6, 0.2, 0.05] });
-    for (let i = 0; i < 16; i++) {                               // 地面裂纹，持续发红
+    for (let i = 0; i < 16; i++) {                               // 지면 균열, 계속 붉게 빛남
       const a = i / 16 * Math.PI * 2 + rand(0.3), len = R * rand(1.1, 2.1);
       jag(x, 0.15, z, x + Math.cos(a) * len, 0.15, z + Math.sin(a) * len, 0.55, [3, 1.1, 0.2], rand(1.8, 3), 0.13);
     }
     burns.push({ x, z, r: R * 0.85, t: 0, life: 4.5, tick: 0, dmg: dmg * 0.07, tr });
-    for (let i = 0; i < 20; i++) after(0.4 + i * 0.2, () => { for (let k = 0; k < 6; k++) { const a = rand(6.28), d = rand(R * 0.9); spark(x + Math.cos(a) * d, 0.2, z + Math.sin(a) * d, rand(-1, 1), rand(3, 9), rand(-1, 1), [3, rand(0.8, 1.8), 0.2], rand(0.8, 1.6), -1.5); } });   // 坑里的余烬
+    for (let i = 0; i < 20; i++) after(0.4 + i * 0.2, () => { for (let k = 0; k < 6; k++) { const a = rand(6.28), d = rand(R * 0.9); spark(x + Math.cos(a) * d, 0.2, z + Math.sin(a) * d, rand(-1, 1), rand(3, 9), rand(-1, 1), [3, rand(0.8, 1.8), 0.2], rand(0.8, 1.6), -1.5); } });   // 구덩이 속 잔불
     marks.push({ x, z, r: R * 0.85, t: 0, life: 4.5, col: [1.0, 0.3, 0.05], op: 0.35 });
     flash = Math.max(flash, 0.5); flashC.set(1, 0.85, 0.6); shake = Math.max(shake, 4.5); ab = Math.max(ab, 0.14); glow = 1; slowT = 0.22; slowK = 0.08;
     shockAt(x, z, 1.5, 0.9); impactFrame(80); look(x, z, 0, 7);
@@ -1428,7 +1429,7 @@ function impact(x, z, R, dmg, tr, big) {
   sfx.boom(big);
 }
 function castMeteor(x, z) {
-  const tr = track('陨星坠'), dmg = 230 * ultPow();
+  const tr = track('운석 낙하'), dmg = 230 * ultPow();
   rune(x, 0.12, z, 11, [2.4, 0.6, 0.15], 1.25, 3);
   marks.push({ x, z, r: 9, t: 0, life: 1.05, col: [1.6, 0.4, 0.1], op: 0.22, pulse: true });
   meteors.push({ sx: x + 52, sy: 90, sz: z - 30, tx: x, tz: z, t: 0, dur: 1.05, size: 4.2, hit: () => impact(x, z, 9, dmg, tr, true) });
@@ -1438,7 +1439,7 @@ function castMeteor(x, z) {
     marks.push({ x: mx, z: mz, r: 4.5, t: 0, life: 0.45, col: [1.6, 0.5, 0.1], op: 0.25 });
     meteors.push({ sx: mx + 26, sy: 48, sz: mz - 15, tx: mx, tz: mz, t: 0, dur: 0.45, size: 1.4, hit: () => impact(mx, mz, 4.5, dmg * 0.45, tr, false) });
   });
-  after(3.4, () => {                                             // 余震：一圈火柱从裂缝里喷出来
+  after(3.4, () => {                                             // 여진: 균열에서 불기둥이 한 바퀴 솟음
     shake = Math.max(shake, 2.2); shockAt(x, z, 0.8, 0.7); sfx.boom(false); addRing(x, z, 30, 50, [2.4, 0.9, 0.2]);
     for (let i = 0; i < 10; i++) {
       const a = i / 10 * Math.PI * 2, px = x + Math.cos(a) * 12, pz = z + Math.sin(a) * 12;
@@ -1447,9 +1448,9 @@ function castMeteor(x, z) {
   });
   after(6, () => report(tr));
 }
-// E 极寒领域：冰环扫过全场，整条路长出冰刺，敌人逐个冻结；结束时全场碎裂
+// E 혹한의 영역: 얼음 고리가 전장을 쓸고 길 전체에 얼음 가시가 돋아 적이 하나씩 얼어붙음; 끝나면 전부 산산조각
 function castFrost(x, z) {
-  const tr = track('极寒领域'), pw = ultPow(), id = time, DUR = 3.8;
+  const tr = track('혹한의 영역'), pw = ultPow(), id = time, DUR = 3.8;
   frost = { x, z, t: 0, dur: DUR, id };
   floorU.uFrostC.value.set(x, z);
   flash = Math.max(flash, 0.3); flashC.set(0.6, 0.85, 1); tintC.set(0.6, 0.85, 1.25); tintK = 0.5; tintTo = 0.2; ab = Math.max(ab, 0.08); glow = 0.8; shake = Math.max(shake, 2);
@@ -1463,7 +1464,7 @@ function castFrost(x, z) {
     for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + k * 0.4; spikes.push({ x: x + Math.cos(a) * rad, z: z + Math.sin(a) * rad, h: rand(5, 8) + k * 1.5, r: rand(1.0, 1.6), t: 0, life: DUR - 0.4, rot: rand(6), lean: rand(-0.25, 0.25) }); }
     shake = Math.max(shake, 1);
   }));
-  for (let pi = 0; pi < paths.length; pi++) for (let d = 3; d < (pi ? paths[pi].own : paths[pi].len - 8); d += 5) {   // 路两侧的冰刺随冰环依次破土
+  for (let pi = 0; pi < paths.length; pi++) for (let d = 3; d < (pi ? paths[pi].own : paths[pi].len - 8); d += 5) {   // 길 양옆의 얼음 가시가 얼음 고리를 따라 차례로 솟음
     const p = pathAt(d, pi), px = p.x, pz = p.z, nx = -p.dz, nz = p.dx, wait = Math.hypot(px - x, pz - z) / 110 + 0.05;
     after(wait, () => { for (const sd of [-1, 1]) spikes.push({ x: px + nx * sd * 2.8 + rand(-0.4, 0.4), z: pz + nz * sd * 2.8 + rand(-0.4, 0.4), h: rand(3, 6), r: rand(0.7, 1.1), t: 0, life: DUR - wait, rot: rand(6), lean: rand(-0.3, 0.3) }); });
   }
@@ -1475,7 +1476,7 @@ function castFrost(x, z) {
     burst(e.x, e.h * 0.5, e.z, 10, [1.4, 2.6, 3.4], 8, 0.5);
   });
   sfx.freeze();
-  after(DUR, () => {                                             // 碎冰
+  after(DUR, () => {                                             // 얼음 파편
     let n = 0;
     for (const e of foes) if (e.alive && e.frostId === id) {
       if (n++ < 16) pillar(e.x, e.z, 1.6, 30, [0.7, 1.7, 2.8], 0.5);
@@ -1488,9 +1489,9 @@ function castFrost(x, z) {
     after(0.6, () => report(tr));
   });
 }
-// R 天穹裁决：法阵蓄力 → 光柱从晶塔沿每条路逆扫到入口 → 整条路连环引爆
+// R 천공의 심판: 마법진 충전 → 빛기둥이 크리스탈에서 길을 따라 입구까지 역주 → 길 전체 연쇄 폭발
 function castJudge() {
-  judge = { t: 0, r: 0, id: time + 1, tr: track('天穹裁决'), fired: false, ringT: 0, dmg: 340 * ultPow(), sky: null };
+  judge = { t: 0, r: 0, id: time + 1, tr: track('천공의 심판'), fired: false, ringT: 0, dmg: 340 * ultPow(), sky: null };
   darkTo = 1; sfx.charge(); tintC.set(1.3, 1.0, 0.6);
   rune(CRYSTAL.x, 0.14, CRYSTAL.z, 17, [2.6, 1.8, 0.5], 1.4, 2.4); rune(CRYSTAL.x, 12, CRYSTAL.z, 9, [3, 2.4, 1], 1.4, -4);
   look(CRYSTAL.x, CRYSTAL.z, 0.9, 3);
@@ -1516,7 +1517,7 @@ function updateJudge(dt) {
     return;
   }
   const maxLen = Math.max(...paths.map((P) => P.len));
-  j.r += maxLen / 2.7 * dt;                                      // r：光柱离晶塔已经扫出多远；并线的那段只用主路的光柱
+  j.r += maxLen / 2.7 * dt;                                      // r: 빛기둥이 크리스탈에서 얼마나 멀리 훑었나; 합류 구간은 본선의 빛기둥만 사용
   j.ringT -= dt;
   const ring = j.ringT <= 0;
   if (ring) j.ringT = 0.09;
@@ -1547,7 +1548,7 @@ function updateJudge(dt) {
     if (j.sky) j.sky.life = j.sky.t + 0.35;
     judge = null; look(0, 0, 0.25, 3);
     flash = Math.max(flash, 0.35); flashC.set(1, 0.92, 0.7);
-    paths.forEach((P, pi) => {                                   // 连环引爆：从各个入口一路炸回晶塔
+    paths.forEach((P, pi) => {                                   // 연쇄 폭발: 각 입구에서 크리스탈까지 줄줄이 폭발
       const N = Math.floor(((pi ? P.own : P.len) - 6) / 8);
       maxN = Math.max(maxN, N);
       for (let i = 0; i <= N; i++) {
@@ -1561,7 +1562,7 @@ function updateJudge(dt) {
         });
       }
     });
-    after(0.2 + maxN * 0.045 + 0.2, () => {                       // 收尾：晶塔处一记新星
+    after(0.2 + maxN * 0.045 + 0.2, () => {                       // 마무리: 크리스탈 위에 섬광 한 발
       darkTo = 0; roadGlowTo = 0; tintTo = 0; look(0, 0, 0, 3);
       flash = Math.max(flash, 0.55); flashC.set(1, 0.92, 0.7); shake = Math.max(shake, 3.5); ab = Math.max(ab, 0.12);
       shockAt(CRYSTAL.x, CRYSTAL.z, 1.5, 1.0); impactFrame(60);
@@ -1574,7 +1575,7 @@ function updateJudge(dt) {
     });
   }
 }
-// W 雷霆万钧：天色压暗，落雷接连劈向敌群并在敌人之间跳电，最后一记天雷劈向最强的敌人
+// W 벼락 난무: 하늘이 어두워지고 낙뢰가 적 무리에 연달아 떨어지며 적 사이를 튐, 마지막 천둥번개는 가장 강한 적에게
 function thunder(x, z, dmg, tr, big) {
   const sx = x + rand(-9, 9), sz = z - rand(4, 16), c = [2.4, 1.9, 4];
   jag(sx, 74, sz, x, 0.2, z, big ? 1.8 : 0.8, c, big ? 0.4 : 0.2, 0.05); jag(sx, 74, sz, x, 0.2, z, big ? 0.7 : 0.3, [4, 4, 4.4], big ? 0.3 : 0.14, 0.03);
@@ -1587,7 +1588,7 @@ function thunder(x, z, dmg, tr, big) {
   for (const e of foes) {
     if (!e.alive) continue;
     const d = Math.hypot(e.x - x, e.z - z);
-    if (d <= R + e.r) { hurt(e, dmg / (1 + 0.35 * e.zapN), { ult: tr, fx: x, fz: z }); e.zapN++; if (e.alive && !e.def.tough) e.holdT = Math.max(e.holdT, 0.45); }   // 同一个敌人反复挨劈，伤害递减
+    if (d <= R + e.r) { hurt(e, dmg / (1 + 0.35 * e.zapN), { ult: tr, fx: x, fz: z }); e.zapN++; if (e.alive && !e.def.tough) e.holdT = Math.max(e.holdT, 0.45); }   // 같은 적이 계속 맞으면 피해가 줄어듦
     else if (!big && d < 11 && hops < 3) { hops++; jag(x, 1.5, z, e.x, e.cy, e.z, 0.24, [2, 1.5, 3.4], 0.16); hurt(e, dmg * 0.5 / (1 + 0.35 * e.zapN), { ult: tr, fx: x, fz: z }); }
   }
   flash = Math.max(flash, big ? 0.5 : 0.1); flashC.set(0.8, 0.75, 1); shake = Math.max(shake, big ? 4 : 0.9);
@@ -1598,7 +1599,7 @@ function thunder(x, z, dmg, tr, big) {
   sfx.thunder();
 }
 function castStorm() {
-  storm = { t: 0, dur: 4.4, next: 0.55, tr: track('雷霆万钧'), dmg: 60 * ultPow() };
+  storm = { t: 0, dur: 4.4, next: 0.55, tr: track('벼락 난무'), dmg: 60 * ultPow() };
   for (const e of foes) e.zapN = 0;
   darkTo = 0.8; tintC.set(0.78, 0.72, 1.35); tintK = 0.15; tintTo = 0.4; sfx.storm(); look(0, 0, 0.3, 2);
   rune(0, 0.15, 0, 42, [0.32, 0.22, 0.85], 4.6, 0.4);
@@ -1606,7 +1607,7 @@ function castStorm() {
 function updateStorm(dt) {
   const s = storm;
   s.t += dt; s.next -= dt;
-  for (let i = 0; i < 5; i++) spark(rand(-HX, HX), rand(26, 36), rand(-HZ, HZ), rand(-8, 8), rand(-1, 1), rand(-3, 3), [0.5, 0.4, 1.1], rand(0.3, 0.7), 0);   // 云层里的电光
+  for (let i = 0; i < 5; i++) spark(rand(-HX, HX), rand(26, 36), rand(-HZ, HZ), rand(-8, 8), rand(-1, 1), rand(-3, 3), [0.5, 0.4, 1.1], rand(0.3, 0.7), 0);   // 구름 속의 전광
   const live = foes.filter((e) => e.alive);
   if (s.t >= s.dur) {
     let best = null;
@@ -1618,15 +1619,15 @@ function updateStorm(dt) {
   }
   if (s.next > 0) return;
   s.next = 0.12;
-  if (live.length) {                                             // 随机挑三个，劈挨得最少的那个
+  if (live.length) {                                             // 무작위 셋 중 가장 적게 맞은 적에게 떨어뜨림
     let e = live[Math.floor(rand(live.length))];
     for (let i = 0; i < 2; i++) { const o = live[Math.floor(rand(live.length))]; if (o.zapN < e.zapN) e = o; }
     thunder(e.x, e.z, s.dmg, s.tr, false);
   } else { const pi = Math.floor(rand(paths.length)), p = pathAt(rand(paths[pi].len), pi); thunder(p.x, p.z, s.dmg, s.tr, false); }
 }
-// T 虚空奇点：在鼠标处撕开一个黑洞，把周围的敌人拽过去定住，最后坍缩引爆
+// T 공허의 특이점: 마우스 위치에 블랙홀을 열어 주변 적을 끌어당겨 묶고, 마지막에 붕괴 폭발
 function castHole(x, z) {
-  hole = { x, z, t: 0, dur: 3.4, R: 16, tr: track('虚空奇点'), dmg: 300 * ultPow() };
+  hole = { x, z, t: 0, dur: 3.4, R: 16, tr: track('공허의 특이점'), dmg: 300 * ultPow() };
   darkTo = 0.75; tintC.set(0.85, 0.6, 1.35); tintK = 0.1; tintTo = 0.4; look(x, z, 0.9, 3); sfx.hole();
   rune(x, 0.13, z, 16, [0.7, 0.3, 1.7], 3.5, -2.5); rune(x, 0.16, z, 8, [0.5, 0.25, 1.1], 3.5, 5);
   addRing(x, z, 30, 50, [0.8, 0.3, 1.8]); shockAt(x, z, 0.8, 0.6); shake = Math.max(shake, 1.5);
@@ -1634,7 +1635,7 @@ function castHole(x, z) {
 function updateHole(dt) {
   const h = hole;
   h.t += dt;
-  for (let i = 0; i < 14; i++) {                                 // 被吸进去的光尘，绕着旋入
+  for (let i = 0; i < 14; i++) {                                 // 빨려 들어가는 빛먼지, 소용돌이치며 들어감
     const a = rand(Math.PI * 2), r = rand(5, h.R + 4), sp = rand(14, 26), cs = Math.cos(a), sn = Math.sin(a);
     spark(h.x + cs * r, rand(0.5, 9), h.z + sn * r, -cs * sp + sn * sp * 0.7, rand(-1, 3), -sn * sp - cs * sp * 0.7, [1.3, 0.6, 2.6], Math.max(0.1, (r - 4.5) / sp), 0);
   }
@@ -1649,7 +1650,7 @@ function updateHole(dt) {
     hurt(e, h.dmg * 0.1 * dt, { ult: h.tr, quiet: true, fx: h.x, fz: h.z });
   }
   if (h.t < h.dur) return;
-  const x = h.x, z = h.z, c = [1.8, 0.9, 3.4];                   // 坍缩
+  const x = h.x, z = h.z, c = [1.8, 0.9, 3.4];                   // 붕괴
   hole = null;
   for (const e of foes) if (e.alive && Math.hypot(e.x - x, e.z - z) <= h.R * 0.6 + e.r) hurt(e, h.dmg, { ult: h.tr, fx: x, fz: z });
   flash = Math.max(flash, 0.5); flashC.set(0.8, 0.6, 1); shake = Math.max(shake, 4.5); ab = Math.max(ab, 0.16); shockAt(x, z, 1.7, 1.0); impactFrame(80);
@@ -1661,7 +1662,7 @@ function updateHole(dt) {
   darkTo = 0; tintTo = 0; look(x, z, 0, 6); sfx.boom(true); sfx.shatter();
   after(0.6, () => report(h.tr));
 }
-// G 流光剑阵：十柄光剑在鼠标处围成一圈，依次刺下，最后一柄巨剑落在阵心
+// G 유성 검진: 빛의 검 열 자루가 마우스 위치에 원을 그리고 차례로 내리꽂힘, 마지막 거대 검이 중심에 떨어짐
 function bladeHit(x, z, R, dmg, tr, big) {
   splash(x, z, R, dmg, { ult: tr, fx: x, fz: z });
   pillar(x, z, big ? 2 : 0.8, big ? 34 : 20, big ? [0.5, 1.2, 1.9] : [0.7, 1.7, 2.6], big ? 0.7 : 0.3);
@@ -1671,12 +1672,12 @@ function bladeHit(x, z, R, dmg, tr, big) {
   shake = Math.max(shake, big ? 4.2 : 1.0); sfx.blade(big);
   if (!big) return;
   flash = Math.max(flash, 0.18); flashC.set(0.7, 0.95, 1); ab = Math.max(ab, 0.12); shockAt(x, z, 1.6, 0.9); impactFrame(70); sfx.boom(true);
-  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, L = i % 2 ? 15 : 28; jag(x, 0.2, z, x + Math.cos(a) * L, 0.2, z + Math.sin(a) * L, i % 2 ? 0.4 : 0.8, [0.9, 1.8, 2.6], i % 2 ? 0.5 : 0.8, 0.02); }   // 十字光痕
+  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, L = i % 2 ? 15 : 28; jag(x, 0.2, z, x + Math.cos(a) * L, 0.2, z + Math.sin(a) * L, i % 2 ? 0.4 : 0.8, [0.9, 1.8, 2.6], i % 2 ? 0.5 : 0.8, 0.02); }   // 십자 빛 자국
   addRing(x, z, 40, 70, [0.6, 1.4, 2.2]); addRing(x, z, 22, 36, [1.4, 2.4, 3]);
   orbs.push({ x, y: 2, z, r0: 1, r1: R * 0.6, t: 0, life: 0.45, col: [0.1, 0.3, 0.55] });
 }
 function castBlades(x, z) {
-  const tr = track('流光剑阵'), dmg = 150 * ultPow(), N = 10, R = 11, tEnd = 0.55 + N * 0.11 + 0.3, tAll = tEnd + 1.1;
+  const tr = track('유성 검진'), dmg = 150 * ultPow(), N = 10, R = 11, tEnd = 0.55 + N * 0.11 + 0.3, tAll = tEnd + 1.1;
   rune(x, 0.13, z, R + 4, [0.3, 0.8, 1.3], tAll, 1.5); rune(x, 0.16, z, 5, [0.35, 0.8, 1.2], tAll, -4);
   darkTo = 0.6; look(x, z, 0.9, 3.5); sfx.blades();
   for (let i = 0; i < N; i++) {
@@ -1688,7 +1689,7 @@ function castBlades(x, z) {
   after(tAll + 0.5, () => report(tr));
 }
 
-// ---------- 自动代打（测试用） ----------
+// ---------- 자동 플레이(테스트용) ----------
 const AUTO_ORDER = ['arrow', 'arrow', 'cannon', 'frost', 'arrow', 'tesla', 'flame', 'sniper', 'prism', 'mortar', 'tesla', 'frost', 'beacon', 'cannon', 'prism', 'sniper', 'arrow'];
 function autoPlay() {
   const type = AUTO_ORDER[towers.length % AUTO_ORDER.length];
@@ -1709,7 +1710,7 @@ function autoPlay() {
   else if (live.length >= 12 && ultCd[3] <= 0) castUlt(3, 0, 0);
 }
 
-// ---------- 每帧更新 ----------
+// ---------- 매 프레임 갱신 ----------
 function updateFx(dt) {
   for (const r of rings) r.r += r.speed * dt;
   rings = rings.filter((r) => r.r < r.max);
@@ -1756,7 +1757,7 @@ function updateFx(dt) {
   flash = Math.max(0, flash - dt * 2.4); ab = Math.max(0, ab - dt * 0.12); glow = Math.max(0, glow - dt * 0.9);
   shake = Math.max(0, shake - dt * 3.2); hurtFx = Math.max(0, hurtFx - dt * 1.6);
   dark += (darkTo - dark) * kf; tintK += (tintTo - tintK) * Math.min(1, dt * 2); roadGlow += (roadGlowTo - roadGlow) * kf;
-  const mo = TH.mote;                                            // 场上飘的东西：萤火、雪、火星、虚空尘
+  const mo = TH.mote;                                            // 맵 위를 떠다니는 것들: 반딧불, 눈, 불티, 공허의 먼지
   if (Math.random() < mo.p) spark(rand(-HX, HX), rand(mo.y[0], mo.y[1]), rand(-HZ, HZ), rand(-0.6, 0.6), rand(mo.vy[0], mo.vy[1]), rand(-0.6, 0.6), mo.col, rand(mo.life[0], mo.life[1]), 0);
   for (let i = 0; i < PMAX; i++) {
     if (pLife[i] <= 0) continue;
@@ -1777,7 +1778,7 @@ function update(dt) {
   if (state !== 'play') { for (const tm of timers) tm.t -= dt; const due = timers.filter((tm) => tm.t <= 0); timers = timers.filter((tm) => tm.t > 0); due.forEach((tm) => tm.fn()); updateFx(dt); return; }
   if (slowT > 0) { slowT -= dt; dt *= slowK; }
   time += dt;
-  for (let i = 0; i < ULTS.length; i++) { const was = ultCd[i]; ultCd[i] = Math.max(0, was - dt); if (was > 0 && ultCd[i] === 0) say(ULTS[i].name + '，就绪', 0); }
+  for (let i = 0; i < ULTS.length; i++) { const was = ultCd[i]; ultCd[i] = Math.max(0, was - dt); if (was > 0 && ultCd[i] === 0) say(ULTS[i].name + ', 준비 완료', 0); }
   if (comboT > 0) { comboT -= dt; if (comboT <= 0) combo = 0; }
   beamN = 0; beamRamp = 0;
   for (const tm of timers) tm.t -= dt;
@@ -1789,21 +1790,21 @@ function update(dt) {
     if (!queue.length && !foes.length) {
       if (waveN >= waves.length) { endGame(true); return; }
       gold += 25 + waveN * 6; phase = 'prep'; nextT = 8;
-      banner('第 ' + waveN + ' 波清除　+' + (25 + waveN * 6) + ' 金', 1.6);
+      banner(waveN + ' 웨이브 클리어　+' + (25 + waveN * 6) + ' 골드', 1.6);
     }
   }
   for (const e of foes) {
     if (!e.alive) continue;
     if (e.flash > 0) e.flash -= dt;
     e.spin += dt * (e.frozenT > 0 ? 0 : 2);
-    if (e.burnT > 0) {                                           // 灼烧
+    if (e.burnT > 0) {                                           // 화상
       e.burnT -= dt; hurt(e, e.burnD * dt, { quiet: true });
       if (!e.alive) continue;
       if (Math.random() < 0.35) spark(e.x + rand(-0.4, 0.4), e.cy, e.z + rand(-0.4, 0.4), rand(-1, 1), rand(3, 7), rand(-1, 1), [3, 1.2, 0.2], 0.35, -2);
       if (e.burnT <= 0) e.burnD = 0;
     }
     if (e.frozenT > 0) { e.frozenT -= dt; e.phased = false; continue; }
-    if (e.holdT > 0) { e.holdT -= dt; place(e); continue; }       // 被落雷麻痹或被奇点拽住
+    if (e.holdT > 0) { e.holdT -= dt; place(e); continue; }       // 낙뢰에 마비됐거나 특이점에 붙잡힘
     if (e.ox || e.oz) { const k = Math.max(0, 1 - dt * 4); e.ox *= k; e.oz *= k; if (Math.abs(e.ox) + Math.abs(e.oz) < 0.05) e.ox = e.oz = 0; }
     if (e.def.phase) { e.phaseT -= dt; if (e.phaseT <= 0) { e.phased = !e.phased; e.phaseT = e.phased ? 1.6 : 3.2; burst(e.x, e.cy, e.z, 12, [0.9, 0.5, 2.2], 7, 0.4); } }
     let sp = e.speed;
@@ -1811,7 +1812,7 @@ function update(dt) {
     if (e.slowT > 0) { e.slowT -= dt; sp *= 1 - e.slowK; if (e.slowT <= 0) e.slowK = 0; }
     e.d += sp * dt; place(e);
     if (e.heal) { e.healT -= dt; if (e.healT <= 0) { e.healT = 2.2; if (rings.length < 12) addRing(e.x, e.z, 8, 16, [0.2, 1.0, 0.5]); for (const o of foes) if (o.alive && o !== e && Math.hypot(o.x - e.x, o.z - e.z) < 8) o.hp = Math.min(o.maxHp, o.hp + o.maxHp * (o.big ? 0.02 : 0.07)); } }
-    if (e.def.stomp) {                                           // 震地兽跺地：震瘫附近的塔
+    if (e.def.stomp) {                                           // 지진수 발 구르기: 주변 타워 마비
       e.stompT -= dt;
       if (e.stompT <= 0) {
         e.stompT = 6.5;
@@ -1819,7 +1820,7 @@ function update(dt) {
         for (const t of towers) if (Math.hypot(t.x - e.x, t.z - e.z) < 9.5) { t.stunT = 2.2; any = true; burst(t.x, t.def.my, t.z, 10, [2.4, 2, 0.5], 8, 0.4); }
         addRing(e.x, e.z, 9.5, 26, [1.6, 1.1, 0.3]); addRing(e.x, e.z, 6, 16, [1.2, 0.6, 0.2]); burst(e.x, 0.3, e.z, 40, [1.4, 1.0, 0.5], 14, 0.6);
         shake = Math.max(shake, 1.3); sfx.stomp();
-        if (any) say('防御塔被震瘫了', 1, 15000);
+        if (any) say('타워가 마비됐다', 1, 15000);
       }
     }
     if (e.d >= e.len - 3) leak(e);
@@ -1835,7 +1836,7 @@ function update(dt) {
   if (auto) { autoT -= dt; if (autoT <= 0) { autoT = 0.4; autoPlay(); } }
 }
 
-// ---------- 输入 ----------
+// ---------- 입력 ----------
 const mouse = new THREE.Vector2(9, 9), aim = new THREE.Vector3(999, 0, 999);
 const ray = new THREE.Raycaster(), ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 let hoverC = -1, hoverR = -1, buildType = null, selected = null;
@@ -1865,7 +1866,7 @@ function act(name, arg) {
   audio();
   if (name === 'start') { const i = typeof arg === 'number' ? arg : mapI; if (unlocked(i)) newGame(i); return; }
   if (name === 'pause') return togglePause();
-  if (name === 'menu') {                                         // 回到选关界面
+  if (name === 'menu') {                                         // 스테이지 선택 화면으로
     if (state === 'title') return;
     resetField(); state = 'title'; $('paused').style.display = 'none';
     stopSay();
@@ -1883,7 +1884,7 @@ function act(name, arg) {
 window.addEventListener('keydown', (e) => {
   if (e.repeat) return;
   let k = e.key.toLowerCase();
-  if (/^Key[A-Z]$/.test(e.code)) k = e.code[3].toLowerCase(); else if (/^Digit\d$/.test(e.code)) k = e.code[5];   // 按物理键位认，开着中文输入法也能用
+  if (/^Key[A-Z]$/.test(e.code)) k = e.code[3].toLowerCase(); else if (/^Digit\d$/.test(e.code)) k = e.code[5];   // 물리 키 기준으로 인식해 입력기 상태와 무관하게 동작
   if (state === 'title' || state === 'over') { if (k === 'enter' || k === ' ') { e.preventDefault(); if ($('screen').style.display !== 'none') act('start'); } return; }
   if (k === 'p') return togglePause();
   if (k === 'm') { muted = !muted; if (muted) stopSay(); return; }
@@ -1899,7 +1900,7 @@ document.addEventListener('click', (e) => {
   if (el) act(el.dataset.act, el.dataset.arg !== undefined && /^\d+$/.test(el.dataset.arg) ? +el.dataset.arg : el.dataset.arg);
 });
 
-// ---------- 界面 ----------
+// ---------- 화면 ----------
 $('towers').innerHTML = TOWER_IDS.map((id) => { const d = TOWERS[id];
   return '<div class="tw" id="tw_' + id + '" data-act="build" data-arg="' + id + '" style="--c:#' + d.col.toString(16).padStart(6, '0') + '"><i>' + d.key + '</i><b>' + d.name + '</b><span>' + d.cost + '</span><small>' + d.tip + '</small></div>'; }).join('');
 $('ults').innerHTML = ULTS.map((u, i) => '<div class="ult" id="ult_' + i + '" data-act="ult" data-arg="' + i + '" style="--c:' + u.col + '"><u></u><i>' + u.key + '</i><b>' + u.name + '</b><small>' + u.tip + '</small><em></em></div>').join('');
@@ -1909,10 +1910,10 @@ function setHtml(id, v) { if (hudCache[id] !== v) { hudCache[id] = v; $(id).inne
 function setClass(id, v) { if (hudCache['c_' + id] !== v) { hudCache['c_' + id] = v; $(id).className = v; } }
 function updateHud() {
   setText('mapn', MAP.name); setText('wave', waveN + ' / ' + waves.length); setText('lives', '' + Math.ceil(lives)); setText('gold', '' + Math.floor(gold)); $('gold').style.transform = goldPop > 0.02 ? 'scale(' + (1 + goldPop * 0.4).toFixed(2) + ')' : ''; setText('kills', '' + kills);
-  if (phase === 'prep') { setHtml('next', '下一波 <b>' + Math.ceil(nextT) + '</b> 秒后到来　按<b>空格</b>提前开始 <b>+' + Math.ceil(nextT) * 2 + '</b> 金'); setClass('next', 'box go'); }
-  else { setHtml('next', '第 ' + waveN + ' 波　剩余敌人 <b>' + (foes.length + queue.length) + '</b>'); setClass('next', 'box'); }
-  setHtml('combo', combo >= 5 ? '×' + combo + '<small>连斩</small>' : '');
-  setText('speed', 'F 倍速 ×' + speed); setClass('speed', 'box' + (speed > 1 ? ' on' : ''));
+  if (phase === 'prep') { setHtml('next', '다음 웨이브 <b>' + Math.ceil(nextT) + '</b>초 후　<b>스페이스</b>로 먼저 시작 <b>+' + Math.ceil(nextT) * 2 + '</b> 골드'); setClass('next', 'box go'); }
+  else { setHtml('next', waveN + ' 웨이브　남은 적 <b>' + (foes.length + queue.length) + '</b>'); setClass('next', 'box'); }
+  setHtml('combo', combo >= 5 ? '×' + combo + '<small>연속 처치</small>' : '');
+  setText('speed', 'F 배속 ×' + speed); setClass('speed', 'box' + (speed > 1 ? ' on' : ''));
   for (const id of TOWER_IDS) setClass('tw_' + id, 'tw' + (buildType === id ? ' sel' : '') + (gold < TOWERS[id].cost ? ' off' : ''));
   ULTS.forEach((u, i) => {
     const cd = ultCd[i], key = 'u' + i, v = cd > 0 ? Math.ceil(cd) : 0;
@@ -1923,11 +1924,11 @@ function updateHud() {
   const t = selected;
   if (t) {
     const c = t.lv < 3 ? upCost(t) : 0;
-    setHtml('info', '<h4>' + t.def.name + '　' + '★'.repeat(t.lv) + '</h4><div class="st">伤害 ' + Math.round(t.dmg) + (t.type === 'prism' || t.type === 'flame' ? ' /秒' : '') + '　射程 ' + t.range.toFixed(1) + (t.type === 'beacon' ? '　增幅 +' + (20 + (t.lv - 1) * 10) + '%' : '') + (t.buff > 1 ? '　<b style="color:#ffd66e">受增幅</b>' : '') + (t.def.ground ? '　仅对地' : '') +
-      (t.slow ? '　减速 ' + Math.round(t.slow * 100) + '%' : '') + (t.chain ? '　连锁 ' + t.chain : '') + '</div>' +
-      (c && t.def.dmg ? '<div class="st">升到 ' + '★'.repeat(t.lv + 1) + '：伤害 <b style="color:#9fe8a0">' + Math.round(t.def.dmg * LV_DMG[t.lv] * t.buff) + '</b>' + (t.lv === 2 ? '　满星觉醒' : '') + '</div>' : '') +
-      (c ? '<span class="btn' + (gold < c ? ' off' : '') + '" data-act="up">U 升级 ' + c + '</span>' : '<span class="st">已满级　</span>') +
-      '<span class="btn sell" data-act="sell">X 出售 +' + Math.round(t.spent * 0.7) + '</span>');
+    setHtml('info', '<h4>' + t.def.name + '　' + '★'.repeat(t.lv) + '</h4><div class="st">피해 ' + Math.round(t.dmg) + (t.type === 'prism' || t.type === 'flame' ? ' /초' : '') + '　사거리 ' + t.range.toFixed(1) + (t.type === 'beacon' ? '　증폭 +' + (20 + (t.lv - 1) * 10) + '%' : '') + (t.buff > 1 ? '　<b style="color:#ffd66e">증폭 적용</b>' : '') + (t.def.ground ? '　지상 전용' : '') +
+      (t.slow ? '　감속 ' + Math.round(t.slow * 100) + '%' : '') + (t.chain ? '　연쇄 ' + t.chain : '') + '</div>' +
+      (c && t.def.dmg ? '<div class="st">다음 등급 ' + '★'.repeat(t.lv + 1) + ': 피해 <b style="color:#9fe8a0">' + Math.round(t.def.dmg * LV_DMG[t.lv] * t.buff) + '</b>' + (t.lv === 2 ? '　만랩 각성' : '') + '</div>' : '') +
+      (c ? '<span class="btn' + (gold < c ? ' off' : '') + '" data-act="up">U 업그레이드 ' + c + '</span>' : '<span class="st">최대 레벨　</span>') +
+      '<span class="btn sell" data-act="sell">X 판매 +' + Math.round(t.spent * 0.7) + '</span>');
     $('info').style.display = 'block';
   } else if (hudCache.info !== '') { hudCache.info = ''; $('info').style.display = 'none'; }
 }
@@ -1935,26 +1936,26 @@ const starStr = (n) => '<span class="stars">' + '★'.repeat(n) + '<i>' + '★'.
 function showScreen() {
   const s = $('screen');
   s.style.display = 'flex'; $('hud').style.display = state === 'over' ? 'block' : 'none';
-  const help = '<div class="help"><b>1 – 9</b> 选塔，<b>点击</b>空地建造；点已有的塔可<b>升级 U</b> / <b>出售 X</b>，升到三星会觉醒<br>' +
-    '<b>Q</b> 陨星坠　<b>W</b> 雷霆万钧　<b>E</b> 极寒领域　<b>R</b> 天穹裁决　<b>T</b> 虚空奇点　<b>G</b> 流光剑阵 —— 六个大招，冷却好了就放<br>' +
-    '<b>空格</b> 提前开波拿奖励　<b>F</b> 倍速　<b>P</b> 暂停　<b>M</b> 静音　<b>右键 / Esc</b> 取消</div>';
+  const help = '<div class="help"><b>1 – 9</b> 타워 선택, <b>클릭</b>으로 빈 땅에 건설; 기존 타워를 누르면 <b>업그레이드 U</b> / <b>판매 X</b>, 3 성이 되면 각성<br>' +
+    '<b>Q</b> 운석 낙하　<b>W</b> 벼락 난무　<b>E</b> 혹한의 영역　<b>R</b> 천공의 심판　<b>T</b> 공허의 특이점　<b>G</b> 유성 검진 — 6 개의 궁극기, 쿨타임이 차면 사용<br>' +
+    '<b>스페이스</b> 웨이브 조기 시작으로 보너스　<b>F</b> 배속　<b>P</b> 일시정지　<b>M</b> 음소거　<b>우클릭 / Esc</b> 취소</div>';
   if (state === 'over') {
     const next = won && mapI + 1 < MAPS.length;
-    s.innerHTML = '<h1 class="' + (won ? 'gold' : 'red') + '">' + (won ? '守 住 了' : '晶 塔 陷 落') + '</h1><div class="sub">' + MAP.name + '　' +
-      (won ? waves.length + ' 波全部击退，剩余生命 ' + Math.ceil(lives) : '倒在第 ' + waveN + ' 波') + '　击杀 ' + kills + '　用时 ' + Math.floor(time / 60) + ' 分 ' + Math.floor(time % 60) + ' 秒</div>' +
+    s.innerHTML = '<h1 class="' + (won ? 'gold' : 'red') + '">' + (won ? '막 아 냈 다' : '크리스탈 함락') + '</h1><div class="sub">' + MAP.name + '　' +
+      (won ? waves.length + '웨이브 전부 격퇴, 남은 생명 ' + Math.ceil(lives) : waveN + '웨이브에서 무너짐') + '　처치 ' + kills + '　소요 ' + Math.floor(time / 60) + ' 분 ' + Math.floor(time % 60) + ' 초</div>' +
       (won ? '<div class="sub">' + starStr(gotStars) + '</div>' : '') +
-      '<div class="row">' + (next ? '<div class="go" data-act="start" data-arg="' + (mapI + 1) + '">下一关 · ' + MAPS[mapI + 1].name + '</div>' : '') +
-      '<div class="go' + (next ? ' alt' : '') + '" data-act="start">再来一局</div><div class="go alt" data-act="menu">选择关卡</div></div>';
+      '<div class="row">' + (next ? '<div class="go" data-act="start" data-arg="' + (mapI + 1) + '">다음 스테이지 · ' + MAPS[mapI + 1].name + '</div>' : '') +
+      '<div class="go' + (next ? ' alt' : '') + '" data-act="start">다시 하기</div><div class="go alt" data-act="menu">스테이지 선택</div></div>';
   } else {
-    s.innerHTML = '<h1>回声</h1><div class="sub">晶塔守卫 · 塔防　选一关开始，通关解锁下一关</div><div class="maps">' + MAPS.map((m, i) => {
+    s.innerHTML = '<h1>메아리</h1><div class="sub">크리스탈 수호전 · 타워디펜스　스테이지를 고르세요, 클리어하면 다음 해금</div><div class="maps">' + MAPS.map((m, i) => {
       const ok = unlocked(i);
-      return '<div class="map' + (ok ? '' : ' lock') + '"' + (ok ? ' data-act="start" data-arg="' + i + '"' : '') + ' style="--c:' + THEMES[m.theme].css + '"><em>第 ' + (i + 1) + ' 关 · ' + waves.length + ' 波</em><b>' + m.name + '</b><small>' + m.sub + '</small>' +
-        (ok ? starStr(save.stars[i] || 0) : '<span class="stars">通关上一关后解锁</span>') + '</div>';
+      return '<div class="map' + (ok ? '' : ' lock') + '"' + (ok ? ' data-act="start" data-arg="' + i + '"' : '') + ' style="--c:' + THEMES[m.theme].css + '"><em>스테이지 ' + (i + 1) + ' · ' + waves.length + ' 웨이브</em><b>' + m.name + '</b><small>' + m.sub + '</small>' +
+        (ok ? starStr(save.stars[i] || 0) : '<span class="stars">이전 스테이지 클리어 시 해금</span>') + '</div>';
     }).join('') + '</div>' + help;
   }
 }
 
-// ---------- 画面同步 ----------
+// ---------- 화면 동기화 ----------
 const counts = {}, SPINNY = { frost: 1, tesla: 1, prism: 1, beacon: 1 };
 function put(name, x, y, z, rx, ry, sx, sy, sz, r, g, b) {
   const m = meshes[name];
@@ -1978,15 +1979,15 @@ function sync() {
     const tp = e.type, step = e.frozenT > 0 ? 0 : Math.sin(e.spin * 4), face = Math.atan2(e.dx, e.dz), fly = tp === 'swarm' || e.fly, blob = tp === 'splitter' || tp === 'mite';
     const y = e.alt + (fly ? 0.5 + step * 0.25 : tp === 'phantom' ? 0.45 + Math.sin(e.spin * 1.5) * 0.2 : Math.abs(step) * (tp === 'runner' ? 0.3 : e.big ? 0.1 : 0.18));
     const sy = fly ? 1 + step * 0.35 : blob ? 1 + step * 0.14 : 1, sx = e.phased ? 0.5 : blob ? 1 - step * 0.07 : 1;
-    const age = T - (e.t0 === undefined ? (e.t0 = T) : e.t0), grow = age < 0.35 ? 0.15 + 0.85 * (1 - (1 - age / 0.35) ** 2) : 1, punch = e.flash > 0 ? Math.min(0.2, e.flash * 1.5) : 0;   // 刚出场从小长大；挨打的一瞬间往后一仰、身子一鼓
+    const age = T - (e.t0 === undefined ? (e.t0 = T) : e.t0), grow = age < 0.35 ? 0.15 + 0.85 * (1 - (1 - age / 0.35) ** 2) : 1, punch = e.flash > 0 ? Math.min(0.2, e.flash * 1.5) : 0;   // 등장 직후 작았다가 커짐; 맞는 순간 뒤로 젖혀지며 몸이 부픔
     const big2 = e.big ? 1 + 0.03 * Math.sin(T * 5 + e.spin) : 1;
     put(tp, e.x, y, e.z, (tp === 'runner' ? step * 0.14 : e.fly ? -0.12 : step * 0.05) - punch * 1.4, face, sx * grow * (1 + punch) * big2, sy * grow * (1 - punch * 0.6), sx * grow * (1 + punch) * big2, r, g, b);
-    if (state === 'play') {                                      // 状态一眼看得出来：烧着的冒火、冻住的闪冰晶、被减速的滴水、首领身上往上冒黑气
+    if (state === 'play') {                                      // 상태가 한눈에 보임: 타는 것은 불꽃, 언 것은 얼음 결정 반짝임, 감속은 물방울, 보스는 검은 기운이 솟음
       if (e.burnT > 0 && Math.random() < 0.35) spark(e.x + rand(-e.r, e.r), e.alt + rand(0.3, e.h), e.z + rand(-e.r, e.r), 0, rand(3, 6), 0, [3, rand(0.9, 1.6), 0.2], rand(0.25, 0.5), -2);
       if (e.frozenT > 0) { if (Math.random() < 0.12) spark(e.x + rand(-e.r, e.r), e.alt + rand(0.2, e.h), e.z + rand(-e.r, e.r), 0, rand(0.4, 1.4), 0, [1.4, 2.2, 3], rand(0.3, 0.5), 0); }
       else if (e.slowT > 0 && Math.random() < 0.1) spark(e.x + rand(-e.r, e.r), e.alt + e.h * 0.5, e.z + rand(-e.r, e.r), 0, 0.5, 0, [0.5, 1.2, 2.4], 0.4, 9);
       if (e.boss && Math.random() < 0.5) spark(e.x + rand(-e.r, e.r) * 1.3, rand(0.2, e.h), e.z + rand(-e.r, e.r) * 1.3, 0, rand(2, 5), 0, [e.col[0] * 2.2 + 0.2, e.col[1] * 1.1, e.col[2] * 2.2 + 0.2], rand(0.5, 1), 0);
-      if (e.big && !fly && e.frozenT <= 0) { const sg = step > 0; if (e.ls !== undefined && sg !== e.ls) burst(e.x, 0.2, e.z, e.boss ? 10 : 5, [0.55, 0.5, 0.42], 4, 0.45, 0.5); e.ls = sg; }   // 大块头每一步踩起一小团尘土
+      if (e.big && !fly && e.frozenT <= 0) { const sg = step > 0; if (e.ls !== undefined && sg !== e.ls) burst(e.x, 0.2, e.z, e.boss ? 10 : 5, [0.55, 0.5, 0.42], 4, 0.45, 0.5); e.ls = sg; }   // 덩치 큰 적은 걸을 때마다 작은 흙먼지
     }
     if (e.shield > 0) put('bubble', e.x, e.alt + e.h * 0.5, e.z, 0, T * 1.5, e.r * 1.9, e.h * 0.62, e.r * 1.9, 0.12, 0.4 + 0.1 * Math.sin(T * 6), 0.95);
     if (!e.phased && (e.hp < e.maxHp || e.shield < e.maxShield || e.shield > 0)) {
@@ -1999,7 +2000,7 @@ function sync() {
   for (const g of gibs) { const k = g.t / g.life, sc = 1 - k * 0.6, f = 1 + (1 - k); put(g.type, g.x, g.y, g.z, g.spin * g.t, g.spin * g.t * 0.7, sc, sc, sc, g.col[0] * f, g.col[1] * f, g.col[2] * f); }
   for (const p of pillars) { const k = p.t / p.life, w = Math.max(0.01, p.r * (1 - k * k)), f = (1 - k) * 0.4; put('pillar', p.x, 0, p.z, 0, k * 3, w, p.h * Math.min(1, k * 8 + 0.15), w, p.col[0] * f, p.col[1] * f, p.col[2] * f); }
   for (const s of shots) {
-    if (s.kind === 'arrow') { const dx = s.tx - s.x, dz = s.tz - s.z, dy = s.ty - s.y, dl = Math.hypot(dx, dy, dz) || 1, L = Math.min(2.6, dl);   // 弩箭：一道带拖尾的光矢
+    if (s.kind === 'arrow') { const dx = s.tx - s.x, dz = s.tz - s.z, dy = s.ty - s.y, dl = Math.hypot(dx, dy, dz) || 1, L = Math.min(2.6, dl);   // 석궁 화살: 꼬리가 달린 빛살
       bolt(s.x, s.y, s.z, s.x - dx / dl * L, s.y - dy / dl * L, s.z - dz / dl * L, 0.13 + (s.lv || 1) * 0.07, [0.9, 2.6, 1.2]); put('shot', s.x, s.y, s.z, 0, 0, 0.2, 0.2, 0.2, 2.4, 3.2, 2.4); }
     else { const q = s.big ? 0.95 : 0.6; put('shot', s.x, s.y, s.z, 0, 0, q, q, q, 3.0, 1.6, 0.5); }
   }
@@ -2008,7 +2009,7 @@ function sync() {
     const k = Math.min(1, m.t / m.dur), len = 0.16 * (1 - k * k) + 0.05, bx = m.x + (m.sx - m.tx) * len, by = m.y + m.sy * len, bz = m.z + (m.sz - m.tz) * len;
     bolt(m.x, m.y, m.z, bx, by, bz, m.size * 1.2, [2.6, 0.9, 0.15]); bolt(m.x, m.y, m.z, (m.x + bx) / 2, (m.y + by) / 2, (m.z + bz) / 2, m.size * 0.7, [4, 2.6, 1]);
   }
-  for (const b of blades) {                                     // 光剑：悬停时缓缓自转并投下一道落点线，然后直刺入地
+  for (const b of blades) {                                     // 빛의 검: 떠 있을 때 천천히 자전하며 낙하 지점 선을 비추고 곧바로 땅에 꽂힘
     if (b.big && b.t < b.wait - 0.3) continue;
     const k = clamp((b.t - b.wait) / b.fall, 0, 1), ap = Math.min(1, (b.big ? b.t - b.wait + 0.3 : b.t) / 0.25) * b.size, hover = b.t < b.wait;
     const y = b.y0 * (1 - k * k) + (hover ? Math.sin(T * 5 + b.x) * 0.5 : 0) - (k >= 1 ? 1.2 * b.size : 0), f = k >= 1 ? 0.6 + 0.15 * Math.sin(T * 14 + b.x) : 0.8;
@@ -2017,10 +2018,10 @@ function sync() {
   }
   for (const t of towers) {
     if (t.rise < 1) continue; const c = t.fxc || [1.2, 1.8, 2.4], my = t.def.my;
-    for (let i = 0; i < (t.lv === 3 ? 3 : t.lv === 2 ? 1 : 0); i++) { const a = T * 2.2 + i * 2.094 + t.x, q = 0.14 + 0.03 * Math.sin(T * 6 + i); put('shot', t.x + Math.cos(a) * 1.9, my + 0.7 + Math.sin(T * 3 + i * 2) * 0.3, t.z + Math.sin(a) * 1.9, 0, 0, q, q, q, c[0] * 0.5, c[1] * 0.5, c[2] * 0.5); }   // 二星一颗、三星三颗光珠绕着塔转
-    if ((t.type === 'cannon' || t.type === 'mortar' || t.type === 'sniper') && t.target && t.stunT <= 0 && t.cdT > 0 && t.cdT < 0.45) { const k = 1 - t.cdT / 0.45, q = 0.12 + 0.3 * k, r2 = t.type === 'sniper' ? 3.6 : 2; put('shot', t.x + Math.sin(t.face) * r2, my + (t.type === 'mortar' ? 1.2 : 0), t.z + Math.cos(t.face) * r2, 0, 0, q, q, q, 3 * k, 2.2 * k, 1.0 * k); }   // 炮口在开火前亮起来
+    for (let i = 0; i < (t.lv === 3 ? 3 : t.lv === 2 ? 1 : 0); i++) { const a = T * 2.2 + i * 2.094 + t.x, q = 0.14 + 0.03 * Math.sin(T * 6 + i); put('shot', t.x + Math.cos(a) * 1.9, my + 0.7 + Math.sin(T * 3 + i * 2) * 0.3, t.z + Math.sin(a) * 1.9, 0, 0, q, q, q, c[0] * 0.5, c[1] * 0.5, c[2] * 0.5); }   // 2 성엔 하나, 3 성엔 세 개의 빛구슬이 타워를 공전
+    if ((t.type === 'cannon' || t.type === 'mortar' || t.type === 'sniper') && t.target && t.stunT <= 0 && t.cdT > 0 && t.cdT < 0.45) { const k = 1 - t.cdT / 0.45, q = 0.12 + 0.3 * k, r2 = t.type === 'sniper' ? 3.6 : 2; put('shot', t.x + Math.sin(t.face) * r2, my + (t.type === 'mortar' ? 1.2 : 0), t.z + Math.cos(t.face) * r2, 0, 0, q, q, q, 3 * k, 2.2 * k, 1.0 * k); }   // 포구가 발사 직전에 빛남
   }
-  if (state === 'play') for (const t of towers) if (t.lv < 3 && gold >= upCost(t)) put('upArrow', t.x, t.def.my + 2.6 + Math.sin(T * 4 + t.x) * 0.25, t.z, 0, T * 2.5, 1, 1, 1, 0.5, 2.2, 0.8);   // 钱够升级的塔头顶有个绿箭头
+  if (state === 'play') for (const t of towers) if (t.lv < 3 && gold >= upCost(t)) put('upArrow', t.x, t.def.my + 2.6 + Math.sin(T * 4 + t.x) * 0.25, t.z, 0, T * 2.5, 1, 1, 1, 0.5, 2.2, 0.8);   // 골드가 충분해 업그레이드 가능한 타워 머리 위에 초록 화살표
   for (const s of spikes) {
     const k = Math.min(1, s.t / 0.14) * Math.min(1, (s.life - s.t) / 0.2), x = s.on ? s.on.x : s.x, z = s.on ? s.on.z : s.z;
     const m = meshes.spike;
@@ -2038,7 +2039,7 @@ function sync() {
     dummy.scale.set(b.w * (0.4 + 0.6 * k), b.w * (0.4 + 0.6 * k), Math.max(0.01, len)); dummy.updateMatrix();
     m.setMatrixAt(i, dummy.matrix); m.setColorAt(i, tmpCol.setRGB(b.col[0] * k, b.col[1] * k, b.col[2] * k));
   }
-  bolts = bolts.filter((b) => !b.one);                           // 单帧光束画完即弃
+  bolts = bolts.filter((b) => !b.one);                           // 한 프레임짜리 빛줄기는 그리고 버림
   for (const k in meshes) { const m = meshes[k]; m.count = counts[k]; m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
   markPool.forEach((m, i) => {
     const o = marks[i];
@@ -2070,7 +2071,7 @@ function sync() {
     if (t.stunT > 0) continue;
     if (!SPINNY[t.type]) { h.rotation.y = t.face + (t.target ? 0 : Math.sin(T * 0.7 + t.x * 1.3 + t.z) * 0.55); const kk = t.kick || 0; h.position.set(-Math.sin(t.face) * kk, t.def.my, -Math.cos(t.face) * kk); }
     else { h.rotation.y = t.spin * 1.5; h.position.y = t.def.my + Math.sin(t.spin * 2) * 0.15; }
-    const sc = (1 + Math.max(0, t.pop) * 1.2) * (1 + (t.lv - 1) * 0.07), rk = 1 - (1 - t.rise) * (1 - t.rise); t.mesh.scale.set(sc, sc * Math.max(0.02, rk), sc);   // 新建的塔从地里升起来
+    const sc = (1 + Math.max(0, t.pop) * 1.2) * (1 + (t.lv - 1) * 0.07), rk = 1 - (1 - t.rise) * (1 - t.rise); t.mesh.scale.set(sc, sc * Math.max(0.02, rk), sc);   // 새로 지은 타워는 땅에서 솟아오름
   }
   const cu = crystal.userData;
   cu.gem.rotation.y = T * 0.8; cu.gem.position.y = 6 + Math.sin(T * 1.6) * 0.4; cu.halo.rotation.z = -T * 0.5;
@@ -2087,7 +2088,7 @@ function sync() {
   }
   const tall = Math.max(1, (16 / 9) / camera.aspect);
   const sx = (Math.random() - 0.5) * shake, sz = (Math.random() - 0.5) * shake;
-  const zk = 1 - 0.24 * zoom, fx = focusX * 0.5 * zoom + sx, fz = focusZ * 0.5 * zoom + sz;          // 大招时镜头推向焦点
+  const zk = 1 - 0.24 * zoom, fx = focusX * 0.5 * zoom + sx, fz = focusZ * 0.5 * zoom + sz;          // 궁극기 사용 시 카메라가 초점으로 밀림
   camera.position.set(fx, CAM_H * tall * zk, CAM_D * tall * zk + CAM_Z + fz);
   camera.lookAt(fx, 0, CAM_Z + fz);
   if (dbgCam) { camera.position.set(dbgCam.x, dbgCam.h, dbgCam.z + dbgCam.h * 0.75); camera.lookAt(dbgCam.x, 1, dbgCam.z); }
@@ -2113,7 +2114,7 @@ function sync() {
   floorU.uGlow.value = roadGlow;
   if (frost) { floorU.uFrostR.value = frost.t * 110; floorU.uFrost.value = frost.t < frost.dur ? 1 : Math.max(0, 1 - (frost.t - frost.dur)); } else floorU.uFrost.value = 0;
   const lu = lens.uniforms;
-  if (shock) { const k = shock.t / shock.life; tmpV.set(shock.x, 0, shock.z).project(camera); lu.uShock.value.set(tmpV.x * 0.5 + 0.5, tmpV.y * 0.5 + 0.5, k * 0.95, shock.str * (1 - k)); } else if (hole) { tmpV.set(hole.x, 4.2, hole.z).project(camera); lu.uShock.value.set(tmpV.x * 0.5 + 0.5, tmpV.y * 0.5 + 0.5, 0.075 + 0.012 * Math.sin(T * 9), -1.2); }   // 奇点周围一圈空间扭曲
+  if (shock) { const k = shock.t / shock.life; tmpV.set(shock.x, 0, shock.z).project(camera); lu.uShock.value.set(tmpV.x * 0.5 + 0.5, tmpV.y * 0.5 + 0.5, k * 0.95, shock.str * (1 - k)); } else if (hole) { tmpV.set(hole.x, 4.2, hole.z).project(camera); lu.uShock.value.set(tmpV.x * 0.5 + 0.5, tmpV.y * 0.5 + 0.5, 0.075 + 0.012 * Math.sin(T * 9), -1.2); }   // 특이점 주변의 공간 왜곡 링
   else lu.uShock.value.w = 0;
   lu.tDepth.value = composer.readBuffer.depthTexture; lu.uPI.value.copy(camera.projectionMatrixInverse); lu.uProjY.value = camera.projectionMatrix.elements[5];
   lu.uAspect.value = camera.aspect; lu.uTime.value = performance.now() / 1000; renderer.getDrawingBufferSize(lu.uPx.value); lu.uPx.value.set(1 / lu.uPx.value.x, 1 / lu.uPx.value.y);
@@ -2125,7 +2126,7 @@ function sync() {
   if (state !== 'title') updateHud();
 }
 
-// ---------- 主循环 ----------
+// ---------- 메인 루프 ----------
 showScreen();
 const clock = new THREE.Clock();
 function frame() {
@@ -2138,7 +2139,7 @@ function frame() {
 }
 requestAnimationFrame(frame);
 
-// 调试钩子：方便自动化测试读取与推进状态
+// 디버그 훅: 자동화 테스트가 상태를 읽고 진행하기 편하게
 window.__echo = {
   get s() { return { state, won, time: +time.toFixed(1), wave: waveN, phase, lives, gold: Math.floor(gold), kills, foes: foes.length, towers: towers.length,
     lv: towers.reduce((a, t) => a + t.lv, 0), ultCd: ultCd.map((c) => +c.toFixed(1)) }; },
