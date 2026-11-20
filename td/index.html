@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>回声 · 晶塔守卫</title>
+<title>메아리 · 크리스탈 수호전</title>
 <style>
   html, body { margin: 0; height: 100%; background: #000; overflow: hidden;
-    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #e4f4fa; user-select: none; }
+    font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; color: #e4f4fa; user-select: none; }
   canvas { display: block; cursor: crosshair; }
   #hud, #screen, #paused { position: fixed; inset: 0; }
   #hud { pointer-events: none; display: none; }
@@ -76,7 +76,7 @@
   .map.lock .stars { font-size: 12px; color: rgba(228, 244, 250, .7); letter-spacing: 1px; }
   @keyframes pulse { 50% { filter: brightness(1.35); } }
   #home { position: fixed; left: 12px; top: 12px; z-index: 30; display: flex; align-items: center; height: 44px; padding: 0 16px; border-radius: 12px; background: rgba(6, 12, 20, .78); border: 1px solid rgba(160, 220, 240, .35); color: #e8f4fa; font-size: 14px; text-decoration: none; pointer-events: auto; }
-  #screen[style*="display: none"] ~ #home { display: none; }   /* 只在标题、暂停、结算界面出现，打的时候不挡画面 */
+  #screen[style*="display: none"] ~ #home { display: none; }   /* 타이틀, 일시정지, 결과 화면에만 표시, 플레이 중엔 화면을 가리지 않음 */
 </style>
 <script type="importmap">
 { "imports": {
@@ -88,24 +88,24 @@
 <body>
 <div id="hud">
   <div id="top" class="box">
-    <span><small>关卡</small><b id="mapn"></b></span>
-    <span><small>波次</small><b id="wave"></b></span>
-    <span><small>晶塔生命</small><b id="lives"></b></span>
-    <span><small>金币</small><b id="gold"></b></span>
-    <span><small>击杀</small><b id="kills"></b></span>
+    <span><small>스테이지</small><b id="mapn"></b></span>
+    <span><small>웨이브</small><b id="wave"></b></span>
+    <span><small>크리스탈 생명</small><b id="lives"></b></span>
+    <span><small>골드</small><b id="gold"></b></span>
+    <span><small>처치</small><b id="kills"></b></span>
   </div>
   <div id="next" class="box" data-act="next"></div>
   <div id="speed" class="box" data-act="speed"></div>
-  <div id="pause" class="box" data-act="pause">P 暂停</div>
+  <div id="pause" class="box" data-act="pause">P 일시정지</div>
   <div id="center"></div>
   <div id="cut"><span></span></div>
   <div id="combo"></div>
   <div id="info" class="box"></div>
   <div id="bar"><div id="towers" class="box"></div><div id="ults" class="box"></div></div>
 </div>
-<div id="paused"><div>暂 停</div><div class="row"><div class="go" data-act="pause">继续游戏</div><div class="go" data-act="menu">返回选关</div></div></div>
+<div id="paused"><div>일시정지</div><div class="row"><div class="go" data-act="pause">계속하기</div><div class="go" data-act="menu">스테이지 선택</div></div></div>
 <div id="screen"></div>
-<a id="home" href="../">‹ 游戏厅</a>
+<a id="home" href="../">‹ 게임장</a>
 <script type="module" src="game.js"></script>
 </body>
 </html>
