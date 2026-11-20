@@ -110,7 +110,7 @@ const sfx = {
 // 한국어 문구 -> 원본 음성 라인(중국어) 대응표. 음성 파일은 원본 유지, 문구만 이 표로 연결.
 const VOICE = { '자 자, 고리 던지기': '来来来，套圈', '아이고 발 미끄러졌네': '哎呀脚滑了', '손해다 손해': '亏本了亏本了', '손쓰임이 좋은데요': '手气可以哦', '걸렸다': '套中了', '아깝다': '差一点点', '또 와 또 와': '再来再来', '장사 끝': '收摊了' };
 const clips = {}, saidLog = [], sayLast = {}; let sayTok = 0, clipSrc = null, sayUntil = 0, sayPri = 0;
-fetch('voice/index.json').then((r) => r.json()).then((idx) => { for (const t in idx) clips[t] = { dur: idx[t].dur, raw: fetch('voice/' + idx[t].id + '.mp3').then((r) => r.arrayBuffer()) }; }).catch(() => {});
+/* 음성 비활성화(사용자 선택): 원본 중국어 음성 클립을 불러오지 않음 */ false && fetch('voice/index.json').then((r) => r.json()).then((idx) => { for (const t in idx) clips[t] = { dur: idx[t].dur, raw: fetch('voice/' + idx[t].id + '.mp3').then((r) => r.arrayBuffer()) }; }).catch(() => {});
 function say(text, pri = 1, gap = 0) {
   const c = clips[VOICE[text] || text], now = performance.now(); if (gap && now - (sayLast[text] || 0) < gap) return; bubble(text); sayLast[text] = now;
   if (!c || (now < sayUntil && pri <= sayPri)) return;
