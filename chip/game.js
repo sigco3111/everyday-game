@@ -126,7 +126,7 @@ const sfx = {
 // 한국어 문구 -> 원본 음성 라인(중국어) 대응표. 음성 파일은 원본 유지, 문구만 이 표로 연결.
 const VOICE = { '돌아왔다': '我回来了', '가죽재킷 입고, 시작': '皮衣穿好，开干', '뺏었다': '拿下', '이 구역은 내 거다': '这块地盘归我了', '재고가 부족해': '货不够啊', '돈이 부족해': '钱不够啊', '구역을 뺏겼다': '地盘被抢了', '침착해, 당황하지 마': '稳住，别慌', '그리고 한 가지 더': '还有一件事', '많이 살수록 더 아낀다': '买得越多，省得越多', '전원 기립': '全场起立', '너무 부풀렸다': '吹过头了', '시총 1위다': '市值第一了', '또 쫓겨났다': '又被赶走了', '왕의 귀환': '王者归来' };
 const clips = {}, saidLog = [], sayLast = {}; let sayTok = 0, clipSrc = null, sayUntil = 0, sayPri = 0;
-fetch('voice/index.json').then((r) => r.json()).then((idx) => { for (const t in idx) clips[t] = { dur: idx[t].dur, raw: fetch('voice/' + idx[t].id + '.mp3').then((r) => r.arrayBuffer()) }; }).catch(() => {});
+/* 음성 비활성화(사용자 선택): 원본 중국어 음성 클립을 불러오지 않음 */ false && fetch('voice/index.json').then((r) => r.json()).then((idx) => { for (const t in idx) clips[t] = { dur: idx[t].dur, raw: fetch('voice/' + idx[t].id + '.mp3').then((r) => r.arrayBuffer()) }; }).catch(() => {});
 function say(text, pri = 1, gap = 0) {
   const c = clips[VOICE[text] || text], now = performance.now(); if (gap && now - (sayLast[text] || 0) < gap) return; bubble(text); sayLast[text] = now; talk = 1;
   if (!c || (now < sayUntil && pri <= sayPri)) return;
