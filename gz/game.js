@@ -44,7 +44,7 @@ function music() { // 한 곡 루프의 일렉트로닉 킥과 베이스
 // 한국어 문구 -> 원본 음성 라인(광둥어) 대응표. 음성 파일은 원본 유지, 문구만 이 표로 연결.
 const VOICE = { '출근!': '开工啦', '퇴근!': '收工啦', '아이고, 부딪혔다': '哎呀，撞亲啦', '국물 다 쏟았네': '啲汤倒泻晒啦', '서둘러요': '快啲啦', '잘했어': '好嘢', '대단해': '犀利', '드리프트!': '漂移啊', '배달 왔어요': '你嘅外卖到啦', '고마워요': '多谢晒' };
 const clips = {}, sayLast = {}, saidLog = []; let sayTok = 0, clipSrc = null, sayUntil = 0, sayPri = 0;
-fetch('voice/index.json').then((r) => r.json()).then((idx) => { for (const t in idx) clips[t] = { dur: idx[t].dur, raw: fetch('voice/' + idx[t].id + '.mp3').then((r) => r.arrayBuffer()) }; }).catch(() => {});
+/* 음성 비활성화(사용자 선택): 원본 중국어 음성 클립을 불러오지 않음 */ false && fetch('voice/index.json').then((r) => r.json()).then((idx) => { for (const t in idx) clips[t] = { dur: idx[t].dur, raw: fetch('voice/' + idx[t].id + '.mp3').then((r) => r.arrayBuffer()) }; }).catch(() => {});
 function say(text, pri = 1, gap = 0) { const c = clips[VOICE[text] || text], now = performance.now(); if (gap && now - (sayLast[text] || 0) < gap) return; sayLast[text] = now; if (!c || (now < sayUntil && pri <= sayPri)) return;
   sayUntil = now + c.dur * 1000; sayPri = pri; saidLog.push(text); if (saidLog.length > 40) saidLog.shift(); const tok = ++sayTok; if (clipSrc) { try { clipSrc.stop(); } catch (e) { /* 이미 다 재생됨 */ } clipSrc = null; } if (!ac || muted) return;
   (c.buf || (c.buf = c.raw.then((b) => ac.decodeAudioData(b)))).then((buf) => { if (tok !== sayTok) return; const src = ac.createBufferSource(), g = ac.createGain(); src.buffer = buf; g.gain.value = 1.6; src.connect(g); g.connect(master); src.start(); clipSrc = src; }).catch(() => {}); }
