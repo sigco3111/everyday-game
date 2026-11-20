@@ -232,7 +232,7 @@ const sfx = {
 // 한국어 문구 -> 원본 음성 라인(중국어) 대응표. 음성 파일은 원본 유지, 문구만 이 표로 연결.
 const VOICE = { '먹자': '开吃', '변비야': '便秘了', '슈퍼 더블': '超级加倍', '화염똥': '喷火屎', '점보': '巨无霸', '무지개똥': '彩虹屎', '아이고, 물렸다': '哎哟，被咬了', '신기록': '新纪录', '못 뛰겠다': '跑不动了', '일사천리': '一泻千里', '잡식괴물이 더 많아졌다': '馋嘴怪更多了', '연발 방귀': '连珠屁', '팝콘 방귀': '爆米花屁', '기관총 방귀': '机关枪屁', '화끈 방귀': '火辣屁', '불 뿜는 방귀': '喷火龙屁', '엉덩이 탈 방귀': '烧腚屁', '얼음 방귀': '冰凉屁', '뼛속 시린 방귀': '透心凉屁', '민트 방귀': '薄荷屁', '천둥 방귀': '惊天响屁', '진동 방귀': '震楼屁', '산사태 방귀': '崩山屁', '우르릉 방귀': '闷雷屁', '구르는 벼락 방귀': '滚地雷屁', '대포 방귀': '大炮屁', '무지개 방귀': '彩虹屁', '오색 구름 방귀': '七彩祥云屁', '요정 방귀': '仙女屁', '참은 방귀': '憋屁', '무음 방귀': '哑屁', '트랙터 방귀': '拖拉机屁', '핵폭탄 방귀': '核弹屁' };
 const clips = {}, saidLog = [], sayLast = {}; let sayTok = 0, clipSrc = null, sayUntil = 0, sayPri = 0;
-fetch('voice/index.json').then((r) => r.json()).then((idx) => { for (const t in idx) clips[t] = { dur: idx[t].dur, raw: fetch('voice/' + idx[t].id + '.mp3').then((r) => r.arrayBuffer()) }; }).catch(() => {});
+/* 음성 비활성화(사용자 선택): 원본 중국어 음성 클립을 불러오지 않음 */ false && fetch('voice/index.json').then((r) => r.json()).then((idx) => { for (const t in idx) clips[t] = { dur: idx[t].dur, raw: fetch('voice/' + idx[t].id + '.mp3').then((r) => r.arrayBuffer()) }; }).catch(() => {});
 function say(text, pri = 1, gap = 0) {
   const c = clips[VOICE[text] || text], now = performance.now();
   if (!c || (gap && now - (sayLast[text] || 0) < gap) || (now < sayUntil && pri <= sayPri)) return;
