@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>回声 · 皮衣老黄</title>
+<title>메아리 · 가죽재킷 황 사장</title>
 <style>
   html, body { margin: 0; height: 100%; background: #030507; overflow: hidden; touch-action: none;
-    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #f2fff0; user-select: none; -webkit-user-select: none; }
+    font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; color: #f2fff0; user-select: none; -webkit-user-select: none; }
   #stage { position: relative; height: 100%; margin: 0 auto; overflow: hidden; background: #060a10; }
   canvas.bg { display: block; position: absolute; inset: 0; }
   #hud, #screen { position: absolute; inset: 0; }
@@ -80,9 +80,9 @@
 <div id="stage">
   <div id="hud">
     <div id="top">
-      <span><small>季度</small><b id="qn">1 / 12</b></span>
-      <span><small>市值</small><b id="cap">0</b></span>
-      <span><small>现金</small><b id="cash">0</b></span>
+      <span><small>분기</small><b id="qn">1 / 12</b></span>
+      <span><small>시총</small><b id="cap">0</b></span>
+      <span><small>현금</small><b id="cash">0</b></span>
     </div>
     <div id="rank"></div>
     <div id="bubble"></div>
@@ -90,27 +90,27 @@
     <div id="tile"><div class="t"><h3 id="tName"></h3><p id="tInfo"></p></div><button id="tBtn"></button></div>
     <div id="panel">
       <div id="stats">
-        <div>芯片<b id="sGen"></b><div id="rdbar"><i></i></div></div>
-        <div>存货<b id="sStock"></b></div>
-        <div>人才<b id="sTal"></b></div>
-        <div>热度<b id="sHype"></b></div>
+        <div>칩<b id="sGen"></b><div id="rdbar"><i></i></div></div>
+        <div>재고<b id="sStock"></b></div>
+        <div>인재<b id="sTal"></b></div>
+        <div>화제성<b id="sHype"></b></div>
       </div>
       <div id="acts">
-        <button id="bRd">研发<small></small></button>
-        <button id="bCap">扩产<small></small></button>
-        <button id="bTal">挖人<small></small></button>
-        <button id="bNext">下一季度<small>结算收入</small></button>
+        <button id="bRd">연구개발<small></small></button>
+        <button id="bCap">증산<small></small></button>
+        <button id="bTal">인재 영입<small></small></button>
+        <button id="bNext">다음 분기<small>수입 정산</small></button>
       </div>
     </div>
     <div id="event"><div class="card"><h2 id="eT"></h2><p id="eD"></p><div id="eB"></div></div></div>
     <div id="key">
       <h2 id="kT"></h2><div id="brag"></div>
       <div id="meter"><i class="z1"></i><i class="z2"></i><i class="z3"></i><i class="z4"></i><u></u></div>
-      <div id="mlab"></div><div id="ktip">点一下，喊出参数</div>
+      <div id="mlab"></div><div id="ktip">눌러서 수치를 외치세요</div>
     </div>
   </div>
   <div id="screen"></div>
-  <a id="home" href="../">‹ 游戏厅</a>
+  <a id="home" href="../">‹ 게임장</a>
 </div>
 <script type="module">import("./game.js?t=" + Date.now());</script>
 </body>
